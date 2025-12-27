@@ -4,7 +4,7 @@ using AigoraNet.IdentityWeb.Models;
 
 namespace AigoraNet.IdentityWeb.Controllers;
 
-public class HomeController : Controller
+public class HomeController : DefaultController
 {
     public IActionResult Index()
     {

@@ -1,9 +1,10 @@
 ﻿using AigoraNet.Common.Entities;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace AigoraNet.Common.Stores;
+namespace AigoraNet.Common;
 
-public abstract class DefaultContext : DbContext
+public class DefaultContext : DbContext, IDataProtectionKeyContext
 {
     public DefaultContext(DbContextOptions options) : base(options)
     {
@@ -12,7 +13,7 @@ public abstract class DefaultContext : DbContext
 	public DbSet<LogItem> Logs { get; set; }
     public DbSet<Member> Members { get; set; }
     public DbSet<FileMaster> FileMasters { get; set; }
-
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

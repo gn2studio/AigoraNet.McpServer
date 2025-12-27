@@ -1,27 +1,18 @@
+using AigoraNet.WebApi;
+using AigoraNet.WebApi.Models;
+using GN2Studio.Library.Helpers;
+
 var builder = WebApplication.CreateBuilder(args);
-
+builder.GetConfiguration(args);
+builder.Configuration.SetLoggerConfiguration();
+builder.SetSerilog();
 builder.AddServiceDefaults();
-
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+var configuration = new Startup(builder.Environment, builder.Configuration);
+configuration.ConfigureServices(builder.Services);
 var app = builder.Build();
-
-app.MapDefaultEndpoints();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
+configuration.Configure(app, app.Environment);
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.Run();

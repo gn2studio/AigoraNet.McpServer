@@ -1,8 +1,8 @@
 ﻿using AigoraNet.Common.Configurations;
 using AigoraNet.Common.DTO;
 using AigoraNet.Common.Entities;
-using AigoraNet.Common.Extends;
 using AigoraNet.Common.Helpers;
+using GN2.Core.Extends;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;

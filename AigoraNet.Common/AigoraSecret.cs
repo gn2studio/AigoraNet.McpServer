@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace AigoraNet.Common;
 
-namespace AigoraNet.Common;
-
-public class AigoraSecret
+public record AigoraSecret
 {
-    public const string JwtAuthKey = "GN2StudioSecretKey250210$#&!@8G4kNzPq";
-    public const string JwtLongKey = "GN2StudioLongerKey250521$#9@48xFk6z5W";
-    public const string SecretKey = "GN2STUDIO4ROSLYN";
+    public const string JwtAuthKey = "GN2AIgoraSecretKey250210$#&!@9G4mNzPq";
+    public const string JwtLongKey = "GN2AIgoraLongerKey250521$#9@47xFk3z5w";
+    public const string SecretKey = "GN2AIGORA4ROSLYN";
 }

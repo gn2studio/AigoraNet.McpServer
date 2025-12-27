@@ -2,7 +2,7 @@
 
 namespace AigoraNet.Common.Configurations;
 
-public record RedisConfigurations : CurrentSiteConfiguration
+public record RedisConfiguration : CurrentSiteConfiguration
 {
     public string Password { get; set; } = string.Empty;
 
