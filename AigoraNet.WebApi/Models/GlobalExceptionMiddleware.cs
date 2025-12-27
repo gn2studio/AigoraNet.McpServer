@@ -1,5 +1,6 @@
 ﻿using AigoraNet.Common.Configurations;
 using GN2.Github.Library;
+using Microsoft.Extensions.Options;
 using Serilog;
 using System.Net;
 
@@ -11,10 +12,10 @@ public class GlobalExceptionMiddleware
     private readonly GitHubConfiguration _gitHubConfiguration;
     private readonly IHostEnvironment _env;
 
-    public GlobalExceptionMiddleware(RequestDelegate next, GitHubConfiguration gitHubConfiguration, IHostEnvironment env)
+    public GlobalExceptionMiddleware(RequestDelegate next, IOptions<GitHubConfiguration> gitHubConfiguration, IHostEnvironment env)
     {
         _next = next;
-        _gitHubConfiguration = gitHubConfiguration;
+        _gitHubConfiguration = gitHubConfiguration.Value;
         _env = env;
     }
 

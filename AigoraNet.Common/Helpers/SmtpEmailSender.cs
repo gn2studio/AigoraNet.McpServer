@@ -1,5 +1,6 @@
 ﻿using AigoraNet.Common.Abstracts;
 using AigoraNet.Common.Configurations;
+using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Mail;
 
@@ -13,11 +14,11 @@ public class SmtpEmailSender : IEmailSender
 
 
     public SmtpEmailSender(
-        SmtpConfiguration configuration,
+        IOptions<SmtpConfiguration> configuration,
         Serilog.ILogger logger
     )
     {
-        _configuration = configuration;
+        _configuration = configuration.Value;
         _logger = logger;
         _client = new SmtpClient
         {

@@ -7,8 +7,6 @@ builder.GetConfiguration(args);
 builder.Configuration.SetLoggerConfiguration();
 builder.SetSerilog();
 builder.AddServiceDefaults();
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
 
 var configuration = new Startup(builder.Environment, builder.Configuration);
 configuration.ConfigureServices(builder.Services);
