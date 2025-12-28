@@ -20,7 +20,6 @@ public class Startup
 
     private const string ProjectName = "AigoraNet.Common";
 
-    private readonly SwaggerConfiguration _swaggerConfig;
     private readonly DatabaseConnectionStrings _databaseConnection;
     private readonly RedisConfiguration _redisConfig;
     private readonly HostSettings _hostSettings;
@@ -29,7 +28,6 @@ public class Startup
     {
         this.HostingEnvironment = env;
         this.Configuration = configuration;
-        this._swaggerConfig = configuration.GetSection(nameof(SwaggerConfiguration)).Get<SwaggerConfiguration>() ?? new SwaggerConfiguration();
         this._databaseConnection = configuration.GetSection(DatabaseConnectionStrings.Name).Get<DatabaseConnectionStrings>() ?? new DatabaseConnectionStrings();
         this._hostSettings = configuration.GetSection(nameof(HostSettings)).Get<HostSettings>() ?? new HostSettings();
         this._redisConfig = configuration.GetSection(nameof(RedisConfiguration)).Get<RedisConfiguration>() ?? new RedisConfiguration();
@@ -39,7 +37,6 @@ public class Startup
     {
         services.Configure<ClientConfiguration>(Configuration.GetSection(nameof(ClientConfiguration)));
         services.Configure<AzureBlobSettings>(Configuration.GetSection(nameof(AzureBlobSettings)));
-        services.Configure<SwaggerConfiguration>(Configuration.GetSection(nameof(SwaggerConfiguration)));
         services.Configure<DatabaseConnectionStrings>(Configuration.GetSection(DatabaseConnectionStrings.Name));
         services.Configure<SmtpConfiguration>(Configuration.GetSection(nameof(SmtpConfiguration)));
         services.Configure<RedisConfiguration>(Configuration.GetSection(nameof(RedisConfiguration)));
