@@ -1,12 +1,14 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS;
 using AigoraNet.Common.CQRS.Prompts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("public/[controller]")]
+[AllowAnonymous]
 public class PromptController : DefaultController
 {
     [HttpPost("match")]

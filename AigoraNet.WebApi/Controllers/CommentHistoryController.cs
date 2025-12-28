@@ -1,11 +1,13 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Comments;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
-[Route("api/comment-history")]
+[Route("private/comment-history")]
+[Authorize(Roles = "Admin,User")]
 public class CommentHistoryController : DefaultController
 {
     [HttpPost]

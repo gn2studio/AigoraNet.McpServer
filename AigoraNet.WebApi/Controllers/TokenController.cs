@@ -1,11 +1,13 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Tokens;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
-[Route("api/tokens")]
+[Route("auth/tokens")]
+[Authorize]
 public class TokenController : DefaultController
 {
     [HttpPost("revoke")]

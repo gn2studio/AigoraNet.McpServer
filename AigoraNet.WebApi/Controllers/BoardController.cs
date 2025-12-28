@@ -1,14 +1,16 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Boards;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
-[Route("api/boards")]
+[Route("public/boards")]
 public class BoardController : DefaultController
 {
     [HttpPost("masters")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateMaster([FromBody] CreateBoardMasterCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<CreateBoardMasterCommand> logger, CancellationToken ct)
     {
         var result = await BoardMasterHandlers.Handle(command, db, logger, ct);
@@ -16,6 +18,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPut("masters")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateMaster([FromBody] UpdateBoardMasterCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<UpdateBoardMasterCommand> logger, CancellationToken ct)
     {
         var result = await BoardMasterHandlers.Handle(command, db, logger, ct);
@@ -23,6 +26,7 @@ public class BoardController : DefaultController
     }
 
     [HttpDelete("masters/{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteMaster(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] ILogger<DeleteBoardMasterCommand> logger, CancellationToken ct)
     {
         var result = await BoardMasterHandlers.Handle(new DeleteBoardMasterCommand(id, deletedBy), db, logger, ct);
@@ -30,6 +34,7 @@ public class BoardController : DefaultController
     }
 
     [HttpGet("masters/{id}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetMaster(string id, [FromServices] DefaultContext db, CancellationToken ct)
     {
         var result = await BoardMasterHandlers.Handle(new GetBoardMasterQuery(id), db, ct);
@@ -37,6 +42,7 @@ public class BoardController : DefaultController
     }
 
     [HttpGet("masters")]
+    [AllowAnonymous]
     public async Task<IActionResult> ListMasters([FromQuery] string? section, [FromQuery] string? site, [FromServices] DefaultContext db, CancellationToken ct)
     {
         var result = await BoardMasterHandlers.Handle(new ListBoardMastersQuery(section, site), db, ct);
@@ -44,6 +50,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPost("categories")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateCategory([FromBody] CreateBoardCategoryCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<CreateBoardCategoryCommand> logger, CancellationToken ct)
     {
         var result = await BoardCategoryHandlers.Handle(command, db, logger, ct);
@@ -51,6 +58,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPut("categories")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateCategory([FromBody] UpdateBoardCategoryCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<UpdateBoardCategoryCommand> logger, CancellationToken ct)
     {
         var result = await BoardCategoryHandlers.Handle(command, db, logger, ct);
@@ -58,6 +66,7 @@ public class BoardController : DefaultController
     }
 
     [HttpDelete("categories/{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteCategory(string id, [FromQuery] string deletedBy, [FromQuery] bool force, [FromServices] DefaultContext db, [FromServices] ILogger<DeleteBoardCategoryCommand> logger, CancellationToken ct)
     {
         var result = await BoardCategoryHandlers.Handle(new DeleteBoardCategoryCommand(id, deletedBy, force), db, logger, ct);
@@ -65,6 +74,7 @@ public class BoardController : DefaultController
     }
 
     [HttpGet("categories")]
+    [AllowAnonymous]
     public async Task<IActionResult> ListCategories([FromQuery] string boardMasterId, [FromServices] DefaultContext db, CancellationToken ct)
     {
         var result = await BoardCategoryHandlers.Handle(new ListBoardCategoriesQuery(boardMasterId), db, ct);
@@ -72,6 +82,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPost("contents")]
+    [Authorize(Roles = "Admin,User")]
     public async Task<IActionResult> CreateContent([FromBody] CreateBoardContentCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<CreateBoardContentCommand> logger, CancellationToken ct)
     {
         var result = await BoardContentHandlers.Handle(command, db, logger, ct);
@@ -79,6 +90,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPut("contents")]
+    [Authorize(Roles = "Admin,User")]
     public async Task<IActionResult> UpdateContent([FromBody] UpdateBoardContentCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<UpdateBoardContentCommand> logger, CancellationToken ct)
     {
         var result = await BoardContentHandlers.Handle(command, db, logger, ct);
@@ -86,6 +98,7 @@ public class BoardController : DefaultController
     }
 
     [HttpDelete("contents/{id}")]
+    [Authorize(Roles = "Admin,User")]
     public async Task<IActionResult> DeleteContent(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] ILogger<DeleteBoardContentCommand> logger, CancellationToken ct)
     {
         var result = await BoardContentHandlers.Handle(new DeleteBoardContentCommand(id, deletedBy), db, logger, ct);
@@ -93,6 +106,7 @@ public class BoardController : DefaultController
     }
 
     [HttpGet("contents/{id}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetContent(string id, [FromServices] DefaultContext db, CancellationToken ct)
     {
         var result = await BoardContentHandlers.Handle(new GetBoardContentQuery(id), db, ct);
@@ -100,6 +114,7 @@ public class BoardController : DefaultController
     }
 
     [HttpGet("contents")]
+    [AllowAnonymous]
     public async Task<IActionResult> ListContents([FromQuery] string masterId, [FromQuery] string? categoryId, [FromServices] DefaultContext db, CancellationToken ct)
     {
         var result = await BoardContentHandlers.Handle(new ListBoardContentsQuery(masterId, categoryId), db, ct);

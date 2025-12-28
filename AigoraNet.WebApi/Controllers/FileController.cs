@@ -1,12 +1,14 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Files;
 using AigoraNet.Common.Abstracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
-[Route("api/files")]
+[Route("private/files")]
+[Authorize(Roles = "Admin,User")]
 public class FileController : DefaultController
 {
     [HttpPost]

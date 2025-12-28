@@ -1,11 +1,13 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Logs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
-[Route("api/logs")]
+[Route("system/logs")]
+[Authorize(Roles = "Admin")]
 public class LogController : DefaultController
 {
     [HttpPost]

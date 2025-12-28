@@ -1,11 +1,13 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Prompts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
-[Route("api/prompt-templates")]
+[Route("system/prompt-templates")]
+[Authorize(Roles = "Admin")]
 public class PromptTemplateController : DefaultController
 {
     [HttpPost]

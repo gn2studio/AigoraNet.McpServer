@@ -1,7 +1,6 @@
 <Solution>
   <Project Path="AigoraNet.AppHost/AigoraNet.AppHost.csproj" />
   <Project Path="AigoraNet.Common/AigoraNet.Common.csproj" Id="8cd27733-47e4-42d0-a6a8-2342a43b8aa9" />
-  <Project Path="AigoraNet.IdentityWeb/AigoraNet.IdentityWeb.csproj" />
   <Project Path="AigoraNet.McpServer/AigoraNet.McpServer.csproj" />
   <Project Path="AigoraNet.ServiceDefaults/AigoraNet.ServiceDefaults.csproj" />
   <Project Path="AigoraNet.WebApi.Tests/AigoraNet.WebApi.Tests.csproj" />

@@ -12,7 +12,8 @@ public sealed class TokenValidationMiddleware : IMiddleware
         "/auth",
         "/swagger",
         "/openapi",
-        "/scalar"
+        "/scalar",
+        "/public"
     };
 
     private const string TokenHeaderName = "X-Token-Key";
