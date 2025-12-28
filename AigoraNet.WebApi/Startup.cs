@@ -2,11 +2,13 @@
 using AigoraNet.Common.Abstracts;
 using AigoraNet.Common.Configurations;
 using AigoraNet.Common.Helpers;
+using AigoraNet.Common.CQRS;
+using AigoraNet.WebApi.Services;
 using GN2.Github.Library;
 using GN2Studio.Library.Helpers;
-using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
+using AigoraNet.WebApi.Middleware;
 
 namespace AigoraNet.WebApi;
 
@@ -52,6 +54,9 @@ public class Startup
                       options.JsonSerializerOptions.UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Skip;
                   });
         services.AddHttpContextAccessor();
+        services.AddMemoryCache();
+        services.AddSingleton<IPromptCache, InMemoryPromptCache>();
+        services.AddScoped<TokenValidationMiddleware>();
         services.AddTransient<IEmailSender, SmtpEmailSender>();
         services.RegisterContentDb(ProjectName, _databaseConnection.ConnectionString);
         services.RegisterIdentitySelfhost();
@@ -66,33 +71,7 @@ public class Startup
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(_redisConfig.ConnectionString));
         services.AddLocatorProvider();
         services.AddControllers();
-        services.AddOpenApi(options =>
-        {
-            options.AddDocumentTransformer((document, context, cancellationToken) =>
-            {
-                document.Info.Title = "AigoraNet MCP Server API";
-                document.Info.Version = "v1";
-                document.Info.Description = "AigoraNet MCP Server의 API 문서입니다. 로그인 후 발급된 Access Token을 Authorize 버튼에 입력하세요.";
-
-                //// 1. 보안 스키마 정의 (Bearer Token)
-                //document.Components ??= new OpenApiComponents();
-                //var bearerScheme = new OpenApiSecurityScheme
-                //{
-                //    Type = SecuritySchemeType.Http,
-                //    Name = "Authorization",
-                //    In = ParameterLocation.Header,
-                //    Scheme = "bearer",
-                //    BearerFormat = "JWT",
-                //    Description = "JWT Access Token을 입력하세요. (예: 'abc12345...')"
-                //};
-
-                //document.Components.SecuritySchemes["Bearer"] = bearerScheme;
-
-                //// 2. 모든 API 엔드포인트에 전역적으로 보안 요구 사항 적용
-                //document.Security = new List<OpenApiSecurityRequirement>();
-                return Task.CompletedTask;
-            });
-        });
+        services.AddOpenApi();
     }
 
     public void Configure(WebApplication app, IWebHostEnvironment env)
@@ -101,6 +80,7 @@ public class Startup
         app.UseHttpsRedirection();
         app.UseStaticFiles();
         app.UseRouting();
+        app.UseMiddleware<TokenValidationMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseCors();
@@ -114,5 +94,4 @@ public class Startup
         app.MapGet("/", () => Results.Redirect("/scalar/v1"));
         app.Services.DatabaseMigrate();
     }
-
 }

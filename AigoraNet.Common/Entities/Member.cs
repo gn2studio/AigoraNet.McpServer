@@ -45,6 +45,9 @@ public class Member : BaseEntity
 
     [JsonIgnore]
     public AuditableEntity Condition { get; set; } = new AuditableEntity();
+
+    [JsonIgnore]
+    public ICollection<Token> Tokens { get; set; } = new List<Token>();
 }
 
 public class MemberConfiguration : IEntityTypeConfiguration<Member>
@@ -58,6 +61,11 @@ public class MemberConfiguration : IEntityTypeConfiguration<Member>
         builder.HasIndex(x => x.Email).IsUnique();
 
         builder.Property(m => m.IsEmailConfirm).HasDefaultValue(false).HasSentinel(false);
+
+        builder.HasMany(x => x.Tokens)
+               .WithOne(t => t.Member)
+               .HasForeignKey(t => t.MemberId)
+               .OnDelete(DeleteBehavior.Cascade);
 
         builder.OwnsOne(x => x.Condition, y =>
         {

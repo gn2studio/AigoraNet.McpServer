@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using Wolverine;
 
 namespace GN2Studio.Library.Helpers;
 
@@ -220,4 +221,6 @@ public static class StartupHelper
         builder.Host.UseSerilog();
         builder.Services.AddSingleton(Log.Logger);
     }
+
+
 }

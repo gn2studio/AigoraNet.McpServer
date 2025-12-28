@@ -25,9 +25,4 @@
     <PackageReference Include="WolverineFx.Http" Version="5.9.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Handlers\" />
-    <Folder Include="Services\" />
-  </ItemGroup>
-
 </Project>

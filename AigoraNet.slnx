@@ -4,5 +4,6 @@
   <Project Path="AigoraNet.IdentityWeb/AigoraNet.IdentityWeb.csproj" />
   <Project Path="AigoraNet.McpServer/AigoraNet.McpServer.csproj" />
   <Project Path="AigoraNet.ServiceDefaults/AigoraNet.ServiceDefaults.csproj" />
+  <Project Path="AigoraNet.WebApi.Tests/AigoraNet.WebApi.Tests.csproj" />
   <Project Path="AigoraNet.WebApi/AigoraNet.WebApi.csproj" />
 </Solution>
