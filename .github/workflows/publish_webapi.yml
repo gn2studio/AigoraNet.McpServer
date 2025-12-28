@@ -17,8 +17,8 @@ jobs:
       - name: Build
         run: dotnet build ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\AigoraNet.WebApi.csproj  --configuration Release --no-restore
 
-      # - name: Stop WAS
-      #   run: Stop-WebAppPool -Name "AIGORA.WebAPI"
+      - name: Stop WAS
+        run: Stop-WebAppPool -Name "AIGORA.WebAPI"
 
       - name: Publish
         run: dotnet publish ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\AigoraNet.WebApi.csproj --configuration Release --no-build --output ${{ secrets.ROOT }}\WebServices\Aigora.API
@@ -29,8 +29,8 @@ jobs:
       - name: Copy config
         run: copy ${{ secrets.ROOT }}\WebServices\appsettings.aigora.json ${{ secrets.ROOT }}\WebServices\Aigora.API\appsettings.json
 
-      # - name: Start WAS
-      #   run: Start-WebAppPool -Name "AIGORA.WebAPI"
+      - name: Start WAS
+        run: Start-WebAppPool -Name "AIGORA.WebAPI"
 
       - name: Notify Slack - Success
         if: success()
