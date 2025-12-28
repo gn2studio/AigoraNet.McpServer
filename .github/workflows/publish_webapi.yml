@@ -1,0 +1,49 @@
+name: AIgora.WebAPI Publish to Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ secrets.ROOT }}\AIgora.Net\_work\Aigora\Aigora\Aigora.WebAPI\Aigora.WebAPI.csproj
+
+      - name: Build
+        run: dotnet build ${{ secrets.ROOT }}\AIgora.Net\_work\Aigora\Aigora\Aigora.WebAPI\Aigora.WebAPI.csproj  --configuration Release --no-restore
+
+      - name: Stop WAS
+        run: Stop-WebAppPool -Name "AIGORA.WebAPI"
+
+      - name: Publish
+        run: dotnet publish ${{ secrets.ROOT }}\AIgora.Net\_work\Aigora\Aigora\Aigora.WebAPI\Aigora.WebAPI.csproj --configuration Release --no-build --output ${{ secrets.ROOT }}\WebServices\Aigora.API
+
+      - name: Delete config
+        run: del ${{ secrets.ROOT }}\WebServices\Aigora.API\appsettings.json
+
+      - name: Copy config
+        run: copy ${{ secrets.ROOT }}\WebServices\appsettings.aigora.json ${{ secrets.ROOT }}\WebServices\Aigora.API\appsettings.json
+
+      - name: Start WAS
+        run: Start-WebAppPool -Name "AIGORA.WebAPI"
+
+      - name: Notify Slack - Success
+        if: success()
+        shell: 'C:\Git\bin\bash.exe {0}'
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"AIgora.net WebAPI Deploy Success* - The job succeeded!"}' \
+          https://hooks.slack.com/services/${{ secrets.SLACKKEY }}
+
+      - name: Notify Slack - Failure
+        if: failure()
+        shell: 'C:\Git\bin\bash.exe {0}'
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"AIgora.net WebAPI Deploy Failed* - Please check the logs."}' \
+          https://hooks.slack.com/services/${{ secrets.SLACKKEY }}
