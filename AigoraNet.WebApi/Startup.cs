@@ -3,6 +3,7 @@ using AigoraNet.Common.Abstracts;
 using AigoraNet.Common.Configurations;
 using AigoraNet.Common.Helpers;
 using AigoraNet.Common.CQRS;
+using AigoraNet.Common.Services;
 using AigoraNet.WebApi.Services;
 using GN2.Github.Library;
 using GN2Studio.Library.Helpers;
@@ -57,6 +58,7 @@ public class Startup
         services.AddMemoryCache();
         services.AddSingleton<IPromptCache, InMemoryPromptCache>();
         services.AddScoped<TokenValidationMiddleware>();
+        services.AddSingleton<IAzureBlobFileService, AzureBlobFileService>();
         services.AddTransient<IEmailSender, SmtpEmailSender>();
         services.RegisterContentDb(ProjectName, _databaseConnection.ConnectionString);
         services.RegisterIdentitySelfhost();

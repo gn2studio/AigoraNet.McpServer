@@ -9,7 +9,6 @@ public sealed class TokenValidationMiddleware : IMiddleware
 {
     private static readonly HashSet<string> _excludedPrefixes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "/",
         "/auth",
         "/swagger",
         "/openapi",
@@ -32,6 +31,11 @@ public sealed class TokenValidationMiddleware : IMiddleware
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         var path = context.Request.Path.HasValue ? context.Request.Path.Value! : string.Empty;
+        if (string.Equals(path, "/", StringComparison.Ordinal))
+        {
+            await next(context);
+            return;
+        }
         if (_excludedPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
         {
             await next(context);

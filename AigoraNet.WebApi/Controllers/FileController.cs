@@ -1,5 +1,6 @@
 using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Files;
+using AigoraNet.Common.Abstracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
@@ -9,23 +10,23 @@ namespace AigoraNet.WebApi.Controllers;
 public class FileController : DefaultController
 {
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateFileMasterCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<CreateFileMasterCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] CreateFileMasterCommand command, [FromServices] DefaultContext db, [FromServices] IAzureBlobFileService blob, [FromServices] ILogger<CreateFileMasterCommand> logger, CancellationToken ct)
     {
-        var result = await FileMasterHandlers.Handle(command, db, logger, ct);
+        var result = await FileMasterHandlers.Handle(command, db, blob, logger, ct);
         return result.Success ? Ok(result.File) : BadRequest(result.Error);
     }
 
-    [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdateFileMasterCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<UpdateFileMasterCommand> logger, CancellationToken ct)
+    [HttpPut("replace")] // replaces existing file: uploads new, disables old, deletes old blob
+    public async Task<IActionResult> Replace([FromBody] ReplaceFileMasterCommand command, [FromServices] DefaultContext db, [FromServices] IAzureBlobFileService blob, [FromServices] ILogger<ReplaceFileMasterCommand> logger, CancellationToken ct)
     {
-        var result = await FileMasterHandlers.Handle(command, db, logger, ct);
+        var result = await FileMasterHandlers.Handle(command, db, blob, logger, ct);
         return result.Success ? Ok(result.File) : BadRequest(result.Error);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] ILogger<DeleteFileMasterCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] IAzureBlobFileService blob, [FromServices] ILogger<DeleteFileMasterCommand> logger, CancellationToken ct)
     {
-        var result = await FileMasterHandlers.Handle(new DeleteFileMasterCommand(id, deletedBy), db, logger, ct);
+        var result = await FileMasterHandlers.Handle(new DeleteFileMasterCommand(id, deletedBy), db, blob, logger, ct);
         return result.Success ? Ok(result.File) : NotFound(result.Error);
     }
 

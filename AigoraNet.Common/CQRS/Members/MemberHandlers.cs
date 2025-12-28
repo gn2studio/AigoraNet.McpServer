@@ -26,6 +26,7 @@ public static class MemberHandlers
 
         var member = new Member
         {
+            Id = Guid.NewGuid().ToString(),
             Email = command.Email.Trim(),
             PasswordHash = command.PasswordHash,
             NickName = command.NickName,
