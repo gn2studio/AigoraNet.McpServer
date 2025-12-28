@@ -12,16 +12,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Restore dependencies
-        run: dotnet restore ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\Aigora.WebAPI.csproj
+        run: dotnet restore ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\AigoraNet.WebApi.csproj
 
       - name: Build
-        run: dotnet build ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\Aigora.WebAPI.csproj  --configuration Release --no-restore
+        run: dotnet build ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\AigoraNet.WebApi.csproj  --configuration Release --no-restore
 
       # - name: Stop WAS
       #   run: Stop-WebAppPool -Name "AIGORA.WebAPI"
 
       - name: Publish
-        run: dotnet publish ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\Aigora.WebAPI.csproj --configuration Release --no-build --output ${{ secrets.ROOT }}\WebServices\Aigora.API
+        run: dotnet publish ${{ secrets.ROOT }}\AigoraMCP\_work\AigoraNet.McpServer\AigoraNet.McpServer\AigoraNet.WebApi\AigoraNet.WebApi.csproj --configuration Release --no-build --output ${{ secrets.ROOT }}\WebServices\Aigora.API
 
       - name: Delete config
         run: del ${{ secrets.ROOT }}\WebServices\Aigora.API\appsettings.json
