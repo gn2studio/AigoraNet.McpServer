@@ -56,7 +56,43 @@ Refer to the VS Code or Visual Studio documentation for more information on conf
 
 ## Testing the MCP Server
 
-Once configured, you can ask Copilot Chat for a random number, for example, `Give me 3 random numbers`. It should prompt you to use the `get_random_number` tool on the `AigoraNet.McpServer` MCP server and show you the results.
+Once configured, the MCP server provides the following tools:
+
+### Available Tools
+
+1. **get_random_number** - Generates a random number between specified min and max values.
+   - Example: "Give me 3 random numbers"
+
+2. **list_tokens_for_owner** - Lists all tokens owned by the owner of a provided token.
+   - Input: `tokenKey` (string) - The token key to identify the owner
+   - Returns: List of tokens with metadata (ID, name, status, dates, masked token key)
+   - Security: Token keys are masked to prevent exposure
+   - Example: "List all tokens for the owner of token xyz"
+
+3. **get_prompts_for_token** - Gets all prompts (prompt templates) mapped to a specific token.
+   - Input: `tokenKey` (string) - The token key to retrieve prompts for
+   - Returns: List of prompt templates (ID, name, content, description, version, locale)
+   - Example: "Get all prompts associated with token xyz"
+
+### Configuration
+
+The MCP server requires a database connection string to access token and prompt data. Set the connection string using one of these methods:
+
+1. Environment variable: `AIGORANET_CONNECTION_STRING`
+2. Configuration file: Add `"ConnectionStrings:DefaultConnection"` to your appsettings.json
+
+Example:
+```bash
+export AIGORANET_CONNECTION_STRING="Server=localhost;Database=AigoraNet;Trusted_Connection=True;"
+dotnet run --project AigoraNet.McpServer
+```
+
+### Edge Cases
+
+- **Non-existent token**: Returns empty list (no error)
+- **Revoked/expired token**: Returns error message for prompt queries; excluded from token lists
+- **Token with no prompts**: Returns empty prompt list (no error)
+- **Empty token key**: Returns validation error
 
 ## Publishing to NuGet.org
 
