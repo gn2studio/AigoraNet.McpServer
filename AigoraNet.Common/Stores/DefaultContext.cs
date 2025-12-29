@@ -17,6 +17,7 @@ public class DefaultContext : DbContext, IDataProtectionKeyContext
     public DbSet<Token> Tokens { get; set; }
     public DbSet<KeywordPrompt> KeywordPrompts { get; set; }
     public DbSet<PromptTemplate> PromptTemplates { get; set; }
+    public DbSet<TokenPromptMapping> TokenPromptMappings { get; set; }
     public DbSet<BoardMaster> BoardMasters { get; set; }
     public DbSet<BoardCategory> BoardCategories { get; set; }
     public DbSet<BoardContent> BoardContents { get; set; }
@@ -32,6 +33,7 @@ public class DefaultContext : DbContext, IDataProtectionKeyContext
         builder.ApplyConfiguration(new TokenConfiguration());
         builder.ApplyConfiguration(new KeywordPromptConfiguration());
         builder.ApplyConfiguration(new PromptTemplateConfiguration());
+        builder.ApplyConfiguration(new TokenPromptMappingConfiguration());
         builder.ApplyConfiguration(new BoardMasterConfiguration());
         builder.ApplyConfiguration(new BoardCategoryConfiguration());
         builder.ApplyConfiguration(new BoardContentConfiguration());
