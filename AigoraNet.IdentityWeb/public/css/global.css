@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@layer base {
+    :root {
+        /* Light Mode Variables */
+        --bg-app: #ffffff;
+        --text-app: #111827;
+        --bg-nav: rgba(255, 255, 255, 0.8);
+        --border-color: #e5e7eb;
+        --primary-color: #2563eb;
+    }
+
+    :root.dark {
+        /* Dark Mode Variables */
+        --bg-app: #111827;
+        /* gray-900 */
+        --text-app: #f9fafb;
+        /* gray-50 */
+        --bg-nav: rgba(17, 24, 39, 0.8);
+        --border-color: #374151;
+        --primary-color: #3b82f6;
+    }
+
+    body {
+        background-color: var(--bg-app);
+        color: var(--text-app);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+}
+
+/* Custom Component Classes */
+.app-layout {
+    background-color: var(--bg-app);
+    color: var(--text-app);
+    min-height: 100vh;
+}
+
+.app-navbar {
+    background-color: var(--bg-nav);
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+}
+
+.glass-card {
+    background-color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+}
+
+:root.dark .glass-card {
+    background-color: rgba(31, 41, 55, 0.7);
+    border: 1px solid rgba(55, 65, 81, 0.5);
+}
