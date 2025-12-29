@@ -423,3 +423,4 @@ appsettings.Release.json
 appsettings.development.json
 appsettings.release.json
 build_output.txt
+/AigoraNet.IdentityWeb/.vscode
