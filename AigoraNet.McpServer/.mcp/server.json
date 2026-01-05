@@ -1,22 +1,28 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
-  "description": "<your description here>",
-  "name": "io.github.<your GitHub username here>/<your repo name>",
+  "description": "AigoraNet MCP server providing keyword-driven prompt loading and token validation for agent integrations.",
+  "name": "AigoraNet.McpServer",
   "version": "0.1.0-beta",
   "packages": [
     {
       "registryType": "nuget",
-      "identifier": "<your package ID here>",
+      "identifier": "SubPromptMcpServer",
       "version": "0.1.0-beta",
       "transport": {
-        "type": "stdio"
+        "type": "http",
+        "url": "https://mcp.aigora.net"
       },
       "packageArguments": [],
-      "environmentVariables": []
+      "environmentVariables": [
+        "ClientConfiguration__AccessToken"
+      ]
     }
   ],
   "repository": {
-    "url": "https://github.com/<your GitHub username here>/<your repo name>",
+    "url": "https://github.com/gn2studio/AigoraNet.McpServer",
     "source": "github"
+  },
+  "endpoints": {
+    "public": "https://mcp.aigora.net"
   }
 }

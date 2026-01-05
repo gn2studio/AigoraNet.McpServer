@@ -1,3 +1,30 @@
+# MCP Server (AigoraNet)
+
+Remote-ready MCP server that validates tokens and serves keyword-based prompts over HTTP.
+
+## Run (self-host)
+
+```bash
+# Required
+export Database__ConnectionString="<sql-connection-string>"
+export ClientConfiguration__AccessToken="X-Token-Key"   # header name expected from agents
+# Optional
+export ASPNETCORE_URLS="http://0.0.0.0:8080"
+
+dotnet run --project AigoraNet.McpServer
+```
+
+- Health: `GET /health`
+- Prompts by token: `GET /mcp/prompts/{tokenKey}` (header `X-Token-Key: <token>` required)
+- Prompt match: `POST /mcp/prompts/match` with `{ requirement, locale?, allowRegex? }` (header required)
+- Token metadata: `GET /mcp/tokens/{tokenKey}` (header required)
+
+### Notes
+- Deploy behind HTTPS reverse proxy at `https://mcp.aigora.net`.
+- All non-health endpoints require the token header; middleware updates token last-used/expiry checks.
+- Settings are loaded from `appsettings.json` + `appsettings.Development.json` + environment variables.
+- MCP stdio tools remain available for local tooling scenarios.
+
 # MCP Server
 
 This README was created using the C# MCP server project template.
