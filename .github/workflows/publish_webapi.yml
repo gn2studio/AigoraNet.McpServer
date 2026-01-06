@@ -38,7 +38,7 @@ jobs:
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data '{"text":"AIgora.net WebAPI Deploy Success* - The job succeeded!"}' \
-          https://hooks.slack.com/services/${{ secrets.SLACKKEY }}
+          https://hooks.slack.com/services/{{ secrets.SLACKKEY }}
 
       - name: Notify Slack - Failure
         if: failure()
@@ -46,4 +46,4 @@ jobs:
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data '{"text":"AIgora.net WebAPI Deploy Failed* - Please check the logs."}' \
-          https://hooks.slack.com/services/${{ secrets.SLACKKEY }}
+          https://hooks.slack.com/services/{{ secrets.SLACKKEY }}

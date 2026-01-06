@@ -9,13 +9,14 @@ using AigoraNet.Common.DTO;
 using AigoraNet.Common.Services;
 using AigoraNet.McpServer.Services;
 using AigoraNet.McpServer.Tools;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
+using System.Collections.Generic;
 
 var basePath = AppContext.BaseDirectory;
 var builder = WebApplication.CreateBuilder(args);
@@ -80,11 +81,57 @@ var app = builder.Build();
 // Basic health endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
+// List tools over HTTP (no auth required for discovery)
+app.MapGet("/listtools", () =>
+{
+    var tools = new[]
+    {
+        new ToolDescriptor(
+            "get_random_number",
+            "Generates a random number between the specified minimum and maximum values.",
+            new ToolInputSchema(
+                "object",
+                new Dictionary<string, ToolInputProperty>
+                {
+                    { "min", new ToolInputProperty("integer", "Minimum value (inclusive)") },
+                    { "max", new ToolInputProperty("integer", "Maximum value (exclusive)") }
+                },
+                Array.Empty<string>(),
+                additionalProperties: false)),
+        new ToolDescriptor(
+            "list_tokens_for_owner",
+            "Lists all tokens for the owner of the provided token. Returns token metadata with masked keys for security.",
+            new ToolInputSchema(
+                "object",
+                new Dictionary<string, ToolInputProperty>
+                {
+                    { "tokenKey", new ToolInputProperty("string", "The token key to identify the owner") }
+                },
+                new[] { "tokenKey" },
+                additionalProperties: false)),
+        new ToolDescriptor(
+            "get_prompts_for_token",
+            "Gets all prompts (prompt templates) that are mapped to a specific token.",
+            new ToolInputSchema(
+                "object",
+                new Dictionary<string, ToolInputProperty>
+                {
+                    { "tokenKey", new ToolInputProperty("string", "The token key to retrieve prompts for") }
+                },
+                new[] { "tokenKey" },
+                additionalProperties: false))
+    };
+
+    return Results.Json(new { tools });
+});
+
 // Token validation middleware
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.HasValue ? context.Request.Path.Value! : string.Empty;
-    if (string.Equals(path, "/health", StringComparison.OrdinalIgnoreCase))
+    if (string.Equals(path, "/health", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(path, "/listtools", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(path, "/listTools", StringComparison.OrdinalIgnoreCase))
     {
         await next(context);
         return;
@@ -189,5 +236,8 @@ app.MapGet("/mcp/tokens/{tokenKey}", async (
 app.Run();
 
 internal record GetPromptRequest(string Requirement, string? Locale = null, bool AllowRegex = true);
+internal record ToolDescriptor(string name, string description, ToolInputSchema inputSchema);
+internal record ToolInputSchema(string type, IDictionary<string, ToolInputProperty> properties, string[] required, bool additionalProperties);
+internal record ToolInputProperty(string type, string? description = null);
 
 public partial class Program { }
