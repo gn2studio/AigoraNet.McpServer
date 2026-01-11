@@ -12,6 +12,7 @@ using GN2.Github.Library;
 using GN2Studio.Library.Helpers;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
+using Microsoft.Extensions.Options;
 
 namespace AigoraNet.WebApi;
 
@@ -43,6 +44,7 @@ public class Startup
         services.Configure<AzureBlobSettings>(Configuration.GetSection(nameof(AzureBlobSettings)));
         services.Configure<DatabaseConnectionStrings>(Configuration.GetSection(DatabaseConnectionStrings.Name));
         services.Configure<SmtpConfiguration>(Configuration.GetSection(nameof(SmtpConfiguration)));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SmtpConfiguration>>().Value);
         services.Configure<RedisConfiguration>(Configuration.GetSection(nameof(RedisConfiguration)));
         services.Configure<SlackWebhookConfiguration>(Configuration.GetSection(nameof(SlackWebhookConfiguration)));
         services.Configure<GitHubConfiguration>(Configuration.GetSection(nameof(GitHubConfiguration)));
