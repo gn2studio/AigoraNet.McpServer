@@ -10,9 +10,12 @@ using GN2.Common.Library.Abstracts;
 using GN2.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Generic;
 using Xunit;
+using static System.IO.Path;
 
 namespace AigoraNet.WebApi.Tests;
 
@@ -41,6 +44,14 @@ public class ControllersTests
             _store[name] = (content, contentType);
             var url = $"https://test/{name}";
             return Task.FromResult(new BlobUploadResult(name, url, content.LongLength, contentType));
+        }
+    }
+
+    private sealed class FakeEmailSender : IEmailSender
+    {
+        public Task SendEmailAsync(string email, string subject, string message)
+        {
+            return Task.CompletedTask;
         }
     }
 
@@ -106,13 +117,21 @@ public class ControllersTests
         }
     }
 
+    private sealed class FakeHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Development";
+        public string ApplicationName { get; set; } = "AigoraNet.WebApi";
+        public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
+        public IFileProvider ContentRootFileProvider { get; set; } = new PhysicalFileProvider(Directory.GetCurrentDirectory());
+    }
+
     [Fact]
     public async Task MemberController_Create_And_Get()
     {
         using var db = CreateContext(nameof(MemberController_Create_And_Get));
         var bridge = new TestActionBridge(db, new FakeBlob());
         var linker = new TestObjectLinker();
-        var controller = new MemberController(NullLogger<MemberController>.Instance, bridge, linker);
+        var controller = new MemberController(NullLogger<MemberController>.Instance, bridge, linker, new FakeEmailSender(), new FakeHostEnvironment());
 
         var createResult = await controller.Create(
             new CreateMemberCommand("user@example.com", "hash", "nick", null, null),

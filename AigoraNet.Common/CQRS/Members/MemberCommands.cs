@@ -1,5 +1,6 @@
 using AigoraNet.Common.Entities;
 using GN2.Common.Library.Abstracts;
+using GN2.Common.Library.Crypto;
 using GN2.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,7 @@ namespace AigoraNet.Common.CQRS.Members;
 public record CreateMemberCommand(string Email, string PasswordHash, string? NickName, string? Photo, string? Bio) : IBridgeRequest<ReturnValues<Member>>;
 public record UpdateMemberCommand(string Id, string? NickName, string? Photo, string? Bio, string UpdatedBy) : IBridgeRequest<ReturnValues<Member>>;
 public record DeleteMemberCommand(string Id, string DeletedBy) : IBridgeRequest<ReturnValues<Member>>;
+public record ConfirmMemberEmailCommand(string MemberId, string UpdatedBy) : IBridgeRequest<ReturnValues<Member>>;
 
 public class CreateMemberCommandHandler : IBridgeHandler<CreateMemberCommand, ReturnValues<Member>>
 {
@@ -43,11 +45,12 @@ public class CreateMemberCommandHandler : IBridgeHandler<CreateMemberCommand, Re
             return result;
         }
 
+        var crypto = new SHA512Handler();
         var member = new Member
         {
             Id = Guid.NewGuid().ToString(),
             Email = request.Email.Trim(),
-            PasswordHash = request.PasswordHash,
+            PasswordHash = crypto.Encrypt(request.PasswordHash),
             NickName = request.NickName,
             Photo = request.Photo,
             Bio = request.Bio,
@@ -159,6 +162,45 @@ public class DeleteMemberCommandHandler : IBridgeHandler<DeleteMemberCommand, Re
 
         result.SetSuccess(1, member);
 
+        return result;
+    }
+}
+
+public class ConfirmMemberEmailCommandHandler : IBridgeHandler<ConfirmMemberEmailCommand, ReturnValues<Member>>
+{
+    private readonly ILogger<ConfirmMemberEmailCommandHandler> _logger;
+    private readonly DefaultContext _context;
+
+    public ConfirmMemberEmailCommandHandler(ILogger<ConfirmMemberEmailCommandHandler> logger, DefaultContext db) : base()
+    {
+        _logger = logger;
+        _context = db;
+    }
+
+    public async Task<ReturnValues<Member>> HandleAsync(ConfirmMemberEmailCommand request, CancellationToken ct)
+    {
+        var result = new ReturnValues<Member>();
+        if (string.IsNullOrWhiteSpace(request.MemberId))
+        {
+            result.SetError("MemberId required");
+            return result;
+        }
+
+        var member = await _context.Members.FirstOrDefaultAsync(x => x.Id == request.MemberId, ct);
+        if (member is null)
+        {
+            result.SetError("Member not found");
+            return result;
+        }
+
+        member.IsEmailConfirm = true;
+        member.EmailConfirmDate = DateTime.UtcNow;
+        member.Condition.UpdatedBy = request.UpdatedBy;
+        member.Condition.LastUpdate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("Member email confirmed {MemberId}", member.Id);
+        result.SetSuccess(1, member);
         return result;
     }
 }

@@ -1,20 +1,20 @@
 using AigoraNet.Common.CQRS.Tokens;
+using AigoraNet.WebApi.Authorization;
 using GN2.Common.Library.Abstracts;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 /// <summary>
-/// 발급된 토큰을 조회하거나 취소(폐기)하는 API. 모든 엔드포인트는 인증이 필요합니다.
+/// 발급된 토큰을 조회하거나 취소(폐기)하는 API. 모든 엔드포인트는 관리자 인증이 필요합니다.
 /// </summary>
 /// <remarks>
 /// - 토큰 관리 경로: /auth/tokens
-/// - Admin/User 권한으로 접근하며, 토큰 헤더 또는 인증 미들웨어 설정이 필요합니다.
+/// - Admin 권한으로만 접근 가능합니다.
 /// </remarks>
 [ApiController]
 [Route("auth/tokens")]
-[Authorize]
+[AdminOnly]
 public class TokenController : DefaultController
 {
     private readonly ILogger<TokenController> _logger;

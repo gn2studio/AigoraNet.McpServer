@@ -1,6 +1,6 @@
 using AigoraNet.Common.CQRS.Logs;
+using AigoraNet.WebApi.Authorization;
 using GN2.Common.Library.Abstracts;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
@@ -14,7 +14,7 @@ namespace AigoraNet.WebApi.Controllers;
 /// </remarks>
 [ApiController]
 [Route("system/logs")]
-[Authorize(Roles = "Admin")]
+[AdminOnly]
 public class LogController : DefaultController
 {
     private readonly ILogger<LogController> _logger;

@@ -1,13 +1,13 @@
 using AigoraNet.Common.CQRS.Prompts;
+using AigoraNet.WebApi.Authorization;
 using GN2.Common.Library.Abstracts;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
 [Route("system/prompt-templates")]
-[Authorize(Roles = "Admin")]
+[AdminOnly]
 public class PromptTemplateController : DefaultController
 {
     private readonly ILogger<PromptTemplateController> _logger;

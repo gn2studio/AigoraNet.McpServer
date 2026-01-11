@@ -85,7 +85,11 @@ public class Startup
         services.AddLocatorProvider();
         services.AddControllers();
         services.AddOpenApi();
-        services.AddActionBridge(typeof(Program).Assembly);
+        services.AddActionBridge(
+            typeof(Program).Assembly,
+            typeof(AigoraNet.Common.AigoraSecret).Assembly
+            );
+        services.AddObjectLinker();
     }
 
     public void Configure(WebApplication app, IWebHostEnvironment env)
@@ -98,6 +102,7 @@ public class Startup
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseCors();
+        app.MapControllers();
         app.MapDefaultEndpoints();
         app.MapOpenApi();
         app.MapScalarApiReference(options =>

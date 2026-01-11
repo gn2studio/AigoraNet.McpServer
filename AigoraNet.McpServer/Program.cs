@@ -73,7 +73,8 @@ builder.Services.AddSingleton<IAzureBlobFileService, AzureBlobFileService>();
 builder.Services
     .AddMcpServer()
     .WithTools<RandomNumberTools>()
-    .WithTools<TokenManagementTools>();
+    .WithTools<TokenManagementTools>()
+    .WithTools<PromptTools>();
 
 var app = builder.Build();
 

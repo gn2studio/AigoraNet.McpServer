@@ -1,13 +1,13 @@
 using AigoraNet.Common.CQRS.Prompts;
+using AigoraNet.WebApi.Authorization;
 using GN2.Common.Library.Abstracts;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AigoraNet.WebApi.Controllers;
 
 [ApiController]
 [Route("system/keyword-prompts")]
-[Authorize(Roles = "Admin")]
+[AdminOnly]
 public class KeywordPromptController : DefaultController
 {
     private readonly ILogger<KeywordPromptController> _logger;

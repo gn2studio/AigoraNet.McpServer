@@ -1,4 +1,5 @@
 using AigoraNet.Common.CQRS.Boards;
+using AigoraNet.WebApi.Authorization;
 using GN2.Common.Library.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPost("masters")]
-    [Authorize(Roles = "Admin")]
+    [AdminOnly]
     public async Task<IActionResult> CreateMaster([FromBody] CreateBoardMasterCommand command, CancellationToken ct)
     {
         var result = await _bridge.SendAsync(command, ct);
@@ -25,7 +26,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPut("masters")]
-    [Authorize(Roles = "Admin")]
+    [AdminOnly]
     public async Task<IActionResult> UpdateMaster([FromBody] UpdateBoardMasterCommand command, CancellationToken ct)
     {
         var result = await _bridge.SendAsync(command, ct);
@@ -33,7 +34,7 @@ public class BoardController : DefaultController
     }
 
     [HttpDelete("masters/{id}")]
-    [Authorize(Roles = "Admin")]
+    [AdminOnly]
     public async Task<IActionResult> DeleteMaster(string id, [FromQuery] string deletedBy, CancellationToken ct)
     {
         var command = new DeleteBoardMasterCommand(id, deletedBy);
@@ -58,7 +59,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPost("categories")]
-    [Authorize(Roles = "Admin")]
+    [AdminOnly]
     public async Task<IActionResult> CreateCategory([FromBody] CreateBoardCategoryCommand command, CancellationToken ct)
     {
         var result = await _bridge.SendAsync(command, ct);
@@ -66,7 +67,7 @@ public class BoardController : DefaultController
     }
 
     [HttpPut("categories")]
-    [Authorize(Roles = "Admin")]
+    [AdminOnly]
     public async Task<IActionResult> UpdateCategory([FromBody] UpdateBoardCategoryCommand command, CancellationToken ct)
     {
         var result = await _bridge.SendAsync(command, ct);
@@ -74,7 +75,7 @@ public class BoardController : DefaultController
     }
 
     [HttpDelete("categories/{id}")]
-    [Authorize(Roles = "Admin")]
+    [AdminOnly]
     public async Task<IActionResult> DeleteCategory(string id, [FromQuery] string deletedBy, [FromQuery] bool force, CancellationToken ct)
     {
         var command = new DeleteBoardCategoryCommand(id, deletedBy, force);
