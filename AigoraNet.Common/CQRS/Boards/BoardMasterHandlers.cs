@@ -55,6 +55,7 @@ public class CreateBoardMasterCommandHandler : IBridgeHandler<CreateBoardMasterC
 
         var master = new BoardMaster
         {
+            Id = Guid.NewGuid().ToString(),
             MasterCode = request.MasterCode.Trim(),
             Title = request.Title.Trim(),
             OwnerId = request.OwnerId,

@@ -61,6 +61,7 @@ public class CreatePromptTemplateCommandHandler : IBridgeHandler<CreatePromptTem
 
         var template = new PromptTemplate
         {
+            Id = Guid.NewGuid().ToString(),
             Name = name,
             Content = HttpUtility.UrlDecode(request.Content),
             Description = request.Description,

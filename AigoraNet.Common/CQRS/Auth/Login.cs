@@ -67,18 +67,28 @@ public class LoginCommandHandler : IBridgeHandler<LoginCommand, ReturnValues<Log
         var expiresAt = DateTime.UtcNow.Add(DefaultLifetime);
         var tokenKey = GenerateTokenKey();
 
-        var token = new Token
+        try
         {
-            MemberId = member.Id,
-            TokenKey = tokenKey,
-            Name = "login",
-            ExpiresAt = expiresAt,
-            Status = TokenStatus.Issued,
-            Condition = new AuditableEntity { CreatedBy = member.Id }
-        };
+            var token = new Token
+            {
+                Id = Guid.NewGuid().ToString(),
+                MemberId = member.Id,
+                TokenKey = tokenKey,
+                Name = "login",
+                ExpiresAt = expiresAt,
+                Status = TokenStatus.Issued,
+                Condition = new AuditableEntity { CreatedBy = member.Id }
+            };
 
-        await _context.Tokens.AddAsync(token, ct);
-        await _context.SaveChangesAsync(ct);
+            await _context.Tokens.AddAsync(token, ct);
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Login failed: unable to issue token for {Email}", request.Email);
+            result.SetError("Login unavailable. Please try again later.");
+            return result;
+        }
 
         _logger.LogInformation("Login success: issued token for {Email}", request.Email);
         result.SetSuccess(1, new LoginResult(tokenKey, expiresAt, member));

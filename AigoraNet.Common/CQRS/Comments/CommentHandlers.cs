@@ -66,6 +66,7 @@ public class CreateCommentCommandHandler : IBridgeHandler<CreateCommentCommand, 
 
         var entity = new Comment
         {
+            Id = Guid.NewGuid().ToString(),
             Key = request.Key.Trim(),
             Content = HttpUtility.UrlDecode(request.Content),
             OwnerId = request.OwnerId,

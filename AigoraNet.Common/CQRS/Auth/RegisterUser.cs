@@ -34,6 +34,7 @@ public class RegisterUserCommandHandler : IBridgeHandler<RegisterUserCommand, Re
 
         var member = new Member
         {
+            Id = Guid.NewGuid().ToString(),
             Email = request.Email,
             PasswordHash = request.Password,
             NickName = request.NickName,

@@ -72,6 +72,7 @@ public class CreateBoardContentCommandHandler : IBridgeHandler<CreateBoardConten
 
         var entity = new BoardContent
         {
+            Id = Guid.NewGuid().ToString(),
             MasterId = request.MasterId,
             CategoryId = request.CategoryId,
             Title = request.Title.Trim(),

@@ -54,6 +54,7 @@ public class CreateBoardCategoryCommandHandler : IBridgeHandler<CreateBoardCateg
 
         var category = new BoardCategory
         {
+            Id = Guid.NewGuid().ToString(),
             BoardMasterId = master.Id,
             Title = request.Title.Trim(),
         };

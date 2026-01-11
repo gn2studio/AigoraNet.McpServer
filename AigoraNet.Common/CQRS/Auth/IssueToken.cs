@@ -39,6 +39,7 @@ public class IssueTokenCommandHandler : IBridgeHandler<IssueTokenCommand, Return
 
         var token = new Token
         {
+            Id = Guid.NewGuid().ToString(),
             MemberId = request.MemberId,
             TokenKey = tokenKey,
             Name = request.Name,

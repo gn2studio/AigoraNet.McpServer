@@ -65,6 +65,7 @@ public class UpsertKeywordPromptCommandHandler : IBridgeHandler<UpsertKeywordPro
 
             var entity = new KeywordPrompt
             {
+                Id = Guid.NewGuid().ToString(),
                 Keyword = keyword,
                 Locale = locale,
                 PromptTemplateId = request.PromptTemplateId,
