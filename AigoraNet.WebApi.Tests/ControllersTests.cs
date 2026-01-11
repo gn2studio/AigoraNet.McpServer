@@ -3,11 +3,15 @@ using AigoraNet.Common.Abstracts;
 using AigoraNet.Common.CQRS.Files;
 using AigoraNet.Common.CQRS.Members;
 using AigoraNet.Common.CQRS.Prompts;
+using AigoraNet.Common.DTO;
 using AigoraNet.Common.Entities;
 using AigoraNet.WebApi.Controllers;
+using GN2.Common.Library.Abstracts;
+using GN2.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Collections.Generic;
 using Xunit;
 
 namespace AigoraNet.WebApi.Tests;
@@ -40,50 +44,121 @@ public class ControllersTests
         }
     }
 
+    private sealed class TestObjectLinker : IObjectLinker
+    {
+        public TDestination Map<TSource, TDestination>(TSource source)
+        {
+            if (source is Member member && typeof(TDestination) == typeof(MemberDTO))
+            {
+                return (TDestination)(object)new MemberDTO(member);
+            }
+
+            if (source is IEnumerable<Member> members && typeof(TDestination) == typeof(List<MemberDTO>))
+            {
+                var list = members.Select(m => new MemberDTO(m)).ToList();
+                return (TDestination)(object)list;
+            }
+
+            return source is TDestination dest ? dest : throw new InvalidOperationException($"Unsupported mapping {typeof(TSource)} -> {typeof(TDestination)}");
+        }
+
+        public void Map<TSource, TDestination>(TSource source, TDestination destination)
+        {
+        }
+    }
+
+    private sealed class TestActionBridge : IActionBridge
+    {
+        private readonly DefaultContext _context;
+        private readonly IAzureBlobFileService _blob;
+
+        public TestActionBridge(DefaultContext context, IAzureBlobFileService blob)
+        {
+            _context = context;
+            _blob = blob;
+        }
+
+        public Task<TResult> SendAsync<TResult>(IBridgeRequest<TResult> request, CancellationToken ct = default)
+        {
+            switch (request)
+            {
+                case CreateMemberCommand createMember:
+                    return (Task<TResult>)(object)new CreateMemberCommandHandler(NullLogger<CreateMemberCommandHandler>.Instance, _context).HandleAsync(createMember, ct);
+                case GetMemberQuery getMember:
+                    return (Task<TResult>)(object)new GetMemberQueryHandler(NullLogger<GetMemberQueryHandler>.Instance, _context).HandleAsync(getMember, ct);
+                case CreatePromptTemplateCommand createPromptTemplate:
+                    return (Task<TResult>)(object)new CreatePromptTemplateCommandHandler(NullLogger<CreatePromptTemplateCommand>.Instance, _context).HandleAsync(createPromptTemplate, ct);
+                case ListPromptTemplatesQuery listPromptTemplates:
+                    return (Task<TResult>)(object)new ListPromptTemplatesQueryHandler(_context).HandleAsync(listPromptTemplates, ct);
+                case UpsertKeywordPromptCommand upsertKeywordPrompt:
+                    return (Task<TResult>)(object)new UpsertKeywordPromptCommandHandler(NullLogger<UpsertKeywordPromptCommand>.Instance, _context).HandleAsync(upsertKeywordPrompt, ct);
+                case ListKeywordPromptsQuery listKeywordPrompts:
+                    return (Task<TResult>)(object)new ListKeywordPromptsQueryHandler(_context).HandleAsync(listKeywordPrompts, ct);
+                case CreateFileMasterCommand createFileMaster:
+                    return (Task<TResult>)(object)new CreateFileMasterCommandHandler(NullLogger<CreateFileMasterCommand>.Instance, _context, _blob).HandleAsync(createFileMaster, ct);
+                case ReplaceFileMasterCommand replaceFileMaster:
+                    return (Task<TResult>)(object)new ReplaceFileMasterCommandHandler(NullLogger<ReplaceFileMasterCommand>.Instance, _context, _blob).HandleAsync(replaceFileMaster, ct);
+                case GetFileMasterQuery getFileMaster:
+                    return (Task<TResult>)(object)new GetFileMasterQueryHandler(_context).HandleAsync(getFileMaster, ct);
+                default:
+                    throw new NotSupportedException($"Request type {request.GetType().Name} not supported by TestActionBridge.");
+            }
+        }
+    }
+
     [Fact]
     public async Task MemberController_Create_And_Get()
     {
         using var db = CreateContext(nameof(MemberController_Create_And_Get));
-        var controller = new MemberController();
+        var bridge = new TestActionBridge(db, new FakeBlob());
+        var linker = new TestObjectLinker();
+        var controller = new MemberController(NullLogger<MemberController>.Instance, bridge, linker);
 
         var createResult = await controller.Create(
-            new CreateMemberCommand("user@example.com", "hash", "nick", null, null, Member.MemberType.User, "actor"),
-            db,
-            NullLogger<CreateMemberCommand>.Instance,
+            new CreateMemberCommand("user@example.com", "hash", "nick", null, null),
             CancellationToken.None) as OkObjectResult;
 
         Assert.NotNull(createResult);
-        var created = Assert.IsType<Member>(createResult.Value);
+        var created = Assert.IsType<ReturnValues<MemberDTO>>(createResult.Value);
+        Assert.True(created.Success);
+        Assert.NotNull(created.Data);
 
-        var getResult = await controller.Get(created.Id, db, CancellationToken.None) as OkObjectResult;
+        var getResult = await controller.Get(created.Data!.Id, CancellationToken.None) as OkObjectResult;
         Assert.NotNull(getResult);
-        var fetched = Assert.IsType<Member>(getResult.Value);
-        Assert.Equal("user@example.com", fetched.Email);
+        var fetched = Assert.IsType<ReturnValues<MemberDTO>>(getResult.Value);
+        Assert.True(fetched.Success);
+        Assert.Equal("user@example.com", fetched.Data!.Email);
     }
 
     [Fact]
     public async Task PromptTemplateController_Create_Then_List()
     {
         using var db = CreateContext(nameof(PromptTemplateController_Create_Then_List));
-        var controller = new PromptTemplateController();
+        var bridge = new TestActionBridge(db, new FakeBlob());
+        var linker = new TestObjectLinker();
+        var controller = new PromptTemplateController(NullLogger<PromptTemplateController>.Instance, bridge, linker);
 
         var create = await controller.Create(
             new CreatePromptTemplateCommand("Hello", "Hi there", "desc", "en", 1, "actor"),
-            db,
-            NullLogger<CreatePromptTemplateCommand>.Instance,
             CancellationToken.None) as OkObjectResult;
         Assert.NotNull(create);
+        var created = Assert.IsType<ReturnValues<PromptTemplate>>(create.Value);
+        Assert.True(created.Success);
 
-        var list = await controller.List("en", null, db, CancellationToken.None) as OkObjectResult;
+        var list = await controller.List("en", null, CancellationToken.None) as OkObjectResult;
         Assert.NotNull(list);
-        var items = Assert.IsAssignableFrom<IEnumerable<PromptTemplate>>(list.Value);
-        Assert.Single(items);
+        var items = Assert.IsType<ReturnValues<List<PromptTemplate>>>(list.Value);
+        Assert.True(items.Success);
+        Assert.Single(items.Data!);
     }
 
     [Fact]
     public async Task KeywordPromptController_Upsert_Then_List()
     {
         using var db = CreateContext(nameof(KeywordPromptController_Upsert_Then_List));
+        var bridge = new TestActionBridge(db, new FakeBlob());
+        var linker = new TestObjectLinker();
+        var controller = new KeywordPromptController(NullLogger<KeywordPromptController>.Instance, bridge, linker);
         // seed template
         var template = new PromptTemplate
         {
@@ -95,18 +170,18 @@ public class ControllersTests
         db.PromptTemplates.Add(template);
         db.SaveChanges();
 
-        var controller = new KeywordPromptController();
         var upsert = await controller.Upsert(
             new UpsertKeywordPromptCommand(null, "hello", template.Id, "en", false, null, "actor"),
-            db,
-            NullLogger<UpsertKeywordPromptCommand>.Instance,
             CancellationToken.None) as OkObjectResult;
         Assert.NotNull(upsert);
+        var upserted = Assert.IsType<ReturnValues<KeywordPrompt>>(upsert.Value);
+        Assert.True(upserted.Success);
 
-        var list = await controller.List("en", template.Id, db, CancellationToken.None) as OkObjectResult;
+        var list = await controller.List("en", template.Id, CancellationToken.None) as OkObjectResult;
         Assert.NotNull(list);
-        var items = Assert.IsAssignableFrom<IEnumerable<KeywordPrompt>>(list.Value);
-        Assert.Single(items);
+        var items = Assert.IsType<ReturnValues<List<KeywordPrompt>>>(list.Value);
+        Assert.True(items.Success);
+        Assert.Single(items.Data!);
     }
 
     [Fact]
@@ -114,31 +189,31 @@ public class ControllersTests
     {
         using var db = CreateContext(nameof(FileController_Create_And_Replace_Disables_Old));
         var blob = new FakeBlob();
-        var controller = new FileController();
+        var bridge = new TestActionBridge(db, blob);
+        var linker = new TestObjectLinker();
+        var controller = new FileController(NullLogger<FileController>.Instance, bridge, linker);
 
         var create = await controller.Create(
             new CreateFileMasterCommand("file1.txt", 4, "text/plain", new byte[] { 1, 2, 3, 4 }, null, null, "actor"),
-            db,
-            blob,
-            NullLogger<CreateFileMasterCommand>.Instance,
             CancellationToken.None) as OkObjectResult;
         Assert.NotNull(create);
-        var created = Assert.IsType<FileMaster>(create.Value);
+        var created = Assert.IsType<ReturnValues<FileMaster>>(create.Value);
+        Assert.True(created.Success);
+        var createdEntity = Assert.IsType<FileMaster>(created.Data);
 
         var replace = await controller.Replace(
-            new ReplaceFileMasterCommand(created.Id, "file2.txt", 3, "text/plain", new byte[] { 5, 6, 7 }, null, null, "actor"),
-            db,
-            blob,
-            NullLogger<ReplaceFileMasterCommand>.Instance,
+            new ReplaceFileMasterCommand(createdEntity.Id, "file2.txt", 3, "text/plain", new byte[] { 5, 6, 7 }, null, null, "actor"),
             CancellationToken.None) as OkObjectResult;
         Assert.NotNull(replace);
-        var replaced = Assert.IsType<FileMaster>(replace.Value);
+        var replaced = Assert.IsType<ReturnValues<FileMaster>>(replace.Value);
+        Assert.True(replaced.Success);
+        var replacedEntity = Assert.IsType<FileMaster>(replaced.Data);
 
-        var old = await db.FileMasters.FirstAsync(x => x.Id == created.Id);
+        var old = await db.FileMasters.FirstAsync(x => x.Id == createdEntity.Id);
         Assert.False(old.Condition.IsEnabled);
         Assert.Equal(ConditionStatus.Disabled, old.Condition.Status);
 
-        var newEntry = await db.FileMasters.FirstAsync(x => x.Id == replaced.Id);
+        var newEntry = await db.FileMasters.FirstAsync(x => x.Id == replacedEntity.Id);
         Assert.True(newEntry.Condition.IsEnabled);
         Assert.Equal(ConditionStatus.Active, newEntry.Condition.Status);
     }

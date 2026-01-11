@@ -1,12 +1,13 @@
-﻿using Newtonsoft.Json;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 
 namespace AigoraNet.Common.Helpers;
 
 public class ApiHelper
 {
     private readonly HttpClient _httpClient;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public ApiHelper(HttpClient httpClient)
     {
@@ -29,7 +30,7 @@ public class ApiHelper
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return JsonConvert.DeserializeObject<T>(json);
+        return JsonSerializer.Deserialize<T>(json, JsonOptions);
     }
 
     /// <summary>
@@ -37,7 +38,7 @@ public class ApiHelper
     /// </summary>
     public async Task<T?> PostAsync<T>(string url, object data, string accessToken, CancellationToken cancellationToken = default)
     {
-        var jsonData = JsonConvert.SerializeObject(data);
+        var jsonData = JsonSerializer.Serialize(data, JsonOptions);
         using var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
@@ -51,7 +52,7 @@ public class ApiHelper
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return JsonConvert.DeserializeObject<T>(json);
+        return JsonSerializer.Deserialize<T>(json, JsonOptions);
     }
 
     /// <summary>
@@ -59,7 +60,7 @@ public class ApiHelper
     /// </summary>
     public async Task<T?> PutAsync<T>(string url, object data, string accessToken, CancellationToken cancellationToken = default)
     {
-        var jsonData = JsonConvert.SerializeObject(data);
+        var jsonData = JsonSerializer.Serialize(data, JsonOptions);
         using var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Put, url) { Content = content };
@@ -73,7 +74,7 @@ public class ApiHelper
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return JsonConvert.DeserializeObject<T>(json);
+        return JsonSerializer.Deserialize<T>(json, JsonOptions);
     }
 
     /// <summary>

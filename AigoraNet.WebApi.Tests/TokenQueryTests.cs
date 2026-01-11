@@ -2,6 +2,7 @@ using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Tokens;
 using AigoraNet.Common.Entities;
 using FluentAssertions;
+using GN2.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;

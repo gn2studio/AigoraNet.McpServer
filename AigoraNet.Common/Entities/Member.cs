@@ -1,4 +1,5 @@
-﻿using GN2.Core.Filters;
+﻿using GN2.Core;
+using GN2.Core.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System.ComponentModel.DataAnnotations;

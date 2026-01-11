@@ -1,53 +1,58 @@
 using AigoraNet.Common.DTO;
 using AigoraNet.Common.Entities;
+using GN2.Common.Library.Abstracts;
+using GN2.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace AigoraNet.Common.CQRS.Tokens;
 
 // Query to list all tokens for the owner of a provided token
-public record ListTokensByOwnerQuery(string TokenKey);
+public record ListTokensByOwnerQuery(string TokenKey) : IBridgeRequest<ReturnValues<List<TokenSummaryDTO>>>;
 
 // Query to get prompts mapped to a specific token
-public record GetPromptsForTokenQuery(string TokenKey);
+public record GetPromptsForTokenQuery(string TokenKey) : IBridgeRequest<ReturnValues<List<PromptTemplateDTO>>>;
 
 // Result types
 public record TokenSummaryListResult(bool Success, string? Error = null, IReadOnlyList<TokenSummaryDTO>? Tokens = null);
 public record PromptListResult(bool Success, string? Error = null, IReadOnlyList<PromptTemplateDTO>? Prompts = null);
 
-public static class TokenQueryHandlers
+public class ListTokensByOwnerQueryHandler : IBridgeHandler<ListTokensByOwnerQuery, ReturnValues<List<TokenSummaryDTO>>>
 {
-    /// <summary>
-    /// Lists all tokens for the owner of the provided token.
-    /// Validates the token, resolves the owner, and returns all tokens for that owner.
-    /// </summary>
-    public static async Task<TokenSummaryListResult> Handle(
-        ListTokensByOwnerQuery query,
-        DefaultContext db,
-        ILogger<ListTokensByOwnerQuery> logger,
-        CancellationToken ct)
+    private readonly DefaultContext _context;
+    private readonly ILogger<ListTokensByOwnerQuery> _logger;
+
+    public ListTokensByOwnerQueryHandler(ILogger<ListTokensByOwnerQuery> logger, DefaultContext db) : base()
     {
-        if (string.IsNullOrWhiteSpace(query.TokenKey))
+        _context = db;
+        _logger = logger;
+    }
+
+    public async Task<ReturnValues<List<TokenSummaryDTO>>> HandleAsync(ListTokensByOwnerQuery request, CancellationToken ct)
+    {
+        var result = new ReturnValues<List<TokenSummaryDTO>>();
+
+        if (string.IsNullOrWhiteSpace(request.TokenKey))
         {
-            logger.LogWarning("ListTokensByOwner failed: empty token key");
-            return new TokenSummaryListResult(false, "TokenKey is required");
+            _logger.LogWarning("ListTokensByOwner failed: empty token key");
+            result.SetError("TokenKey is required");
+            return result;
         }
 
-        // Find the token and resolve the owner
-        var token = await db.Tokens
+        var token = await _context.Tokens
             .AsNoTracking()
-            .Where(t => t.TokenKey == query.TokenKey)
+            .Where(t => t.TokenKey == request.TokenKey)
             .Select(t => new { t.MemberId, t.Status })
             .FirstOrDefaultAsync(ct);
 
         if (token is null)
         {
-            logger.LogWarning("ListTokensByOwner failed: token not found {TokenKey}", MaskTokenKey(query.TokenKey));
-            return new TokenSummaryListResult(true, null, Array.Empty<TokenSummaryDTO>());
+            _logger.LogWarning("ListTokensByOwner failed: token not found {TokenKey}", TokenQueryHandlers.MaskTokenKey(request.TokenKey));
+            result.SetSuccess(0, new List<TokenSummaryDTO>());
+            return result;
         }
 
-        // Query all tokens for this owner with status/enabled filters
-        var tokens = await db.Tokens
+        var tokens = await _context.Tokens
             .AsNoTracking()
             .Where(t => t.MemberId == token.MemberId)
             .Where(t => t.Condition.IsEnabled && t.Condition.Status == ConditionStatus.Active)
@@ -62,49 +67,53 @@ public static class TokenQueryHandlers
                 ExpiresAt = t.ExpiresAt,
                 LastUsedAt = t.LastUsedAt,
                 IsEnabled = t.Condition.IsEnabled,
-                MaskedTokenKey = MaskTokenKey(t.TokenKey)
+                MaskedTokenKey = TokenQueryHandlers.MaskTokenKey(t.TokenKey)
             })
             .ToListAsync(ct);
 
-        logger.LogInformation("ListTokensByOwner returned {Count} tokens for member {MemberId}",
-            tokens.Count, token.MemberId);
+        _logger.LogInformation("ListTokensByOwner returned {Count} tokens for member {MemberId}", tokens.Count, token.MemberId);
+        result.SetSuccess(tokens.Count, tokens);
+        return result;
+    }
+}
 
-        return new TokenSummaryListResult(true, null, tokens);
+public class GetPromptsForTokenQueryHandler : IBridgeHandler<GetPromptsForTokenQuery, ReturnValues<List<PromptTemplateDTO>>>
+{
+    private readonly DefaultContext _context;
+    private readonly ILogger<GetPromptsForTokenQuery> _logger;
+
+    public GetPromptsForTokenQueryHandler(ILogger<GetPromptsForTokenQuery> logger, DefaultContext db) : base()
+    {
+        _context = db;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// Gets all prompts mapped to a specific token.
-    /// Validates the token is active/enabled and returns associated prompts.
-    /// </summary>
-    public static async Task<PromptListResult> Handle(
-        GetPromptsForTokenQuery query,
-        DefaultContext db,
-        ILogger<GetPromptsForTokenQuery> logger,
-        CancellationToken ct)
+    public async Task<ReturnValues<List<PromptTemplateDTO>>> HandleAsync(GetPromptsForTokenQuery request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(query.TokenKey))
+        var result = new ReturnValues<List<PromptTemplateDTO>>();
+
+        if (string.IsNullOrWhiteSpace(request.TokenKey))
         {
-            logger.LogWarning("GetPromptsForToken failed: empty token key");
-            return new PromptListResult(false, "TokenKey is required");
+            _logger.LogWarning("GetPromptsForToken failed: empty token key");
+            result.SetError("TokenKey is required");
+            return result;
         }
 
-        // Validate the token exists and is active
-        var token = await db.Tokens
+        var token = await _context.Tokens
             .AsNoTracking()
-            .Where(t => t.TokenKey == query.TokenKey)
+            .Where(t => t.TokenKey == request.TokenKey)
             .Where(t => t.Condition.IsEnabled && t.Condition.Status == ConditionStatus.Active)
             .Where(t => t.Status == TokenStatus.Issued)
             .FirstOrDefaultAsync(ct);
 
         if (token is null)
         {
-            logger.LogWarning("GetPromptsForToken failed: token not found or inactive {TokenKey}",
-                MaskTokenKey(query.TokenKey));
-            return new PromptListResult(false, "Token not found or inactive");
+            _logger.LogWarning("GetPromptsForToken failed: token not found or inactive {TokenKey}", TokenQueryHandlers.MaskTokenKey(request.TokenKey));
+            result.SetError("Token not found or inactive");
+            return result;
         }
 
-        // Query prompts mapped to this token
-        var prompts = await db.TokenPromptMappings
+        var prompts = await _context.TokenPromptMappings
             .AsNoTracking()
             .Where(m => m.TokenId == token.Id)
             .Where(m => m.Condition.IsEnabled && m.Condition.Status == ConditionStatus.Active)
@@ -122,17 +131,28 @@ public static class TokenQueryHandlers
             })
             .ToListAsync(ct);
 
-        logger.LogInformation("GetPromptsForToken returned {Count} prompts for token {TokenKey}",
-            prompts.Count, MaskTokenKey(query.TokenKey));
+        _logger.LogInformation("GetPromptsForToken returned {Count} prompts for token {TokenKey}", prompts.Count, TokenQueryHandlers.MaskTokenKey(request.TokenKey));
 
-        return new PromptListResult(true, null, prompts);
+        result.SetSuccess(prompts.Count, prompts);
+        return result;
+    }
+}
+
+public static class TokenQueryHandlers
+{
+    public static async Task<TokenSummaryListResult> Handle(ListTokensByOwnerQuery query, DefaultContext db, ILogger<ListTokensByOwnerQuery> logger, CancellationToken ct)
+    {
+        var bridge = await new ListTokensByOwnerQueryHandler(logger, db).HandleAsync(query, ct);
+        return new TokenSummaryListResult(bridge.Success, bridge.Message, bridge.Data);
     }
 
-    /// <summary>
-    /// Masks a token key for logging/display purposes.
-    /// Shows only first 4 and last 4 characters.
-    /// </summary>
-    private static string MaskTokenKey(string tokenKey)
+    public static async Task<PromptListResult> Handle(GetPromptsForTokenQuery query, DefaultContext db, ILogger<GetPromptsForTokenQuery> logger, CancellationToken ct)
+    {
+        var bridge = await new GetPromptsForTokenQueryHandler(logger, db).HandleAsync(query, ct);
+        return new PromptListResult(bridge.Success, bridge.Message, bridge.Data);
+    }
+
+    internal static string MaskTokenKey(string tokenKey)
     {
         if (string.IsNullOrEmpty(tokenKey) || tokenKey.Length <= 8)
             return "****";

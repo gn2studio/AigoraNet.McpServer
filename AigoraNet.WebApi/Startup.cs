@@ -1,15 +1,17 @@
 ﻿using AigoraNet.Common;
 using AigoraNet.Common.Abstracts;
 using AigoraNet.Common.Configurations;
-using AigoraNet.Common.Helpers;
 using AigoraNet.Common.CQRS;
 using AigoraNet.Common.Services;
+using AigoraNet.WebApi.Middleware;
 using AigoraNet.WebApi.Services;
+using GN2.Common.Library.Abstracts;
+using GN2.Common.Library.Helpers;
+using GN2.Core.Configurations;
 using GN2.Github.Library;
 using GN2Studio.Library.Helpers;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
-using AigoraNet.WebApi.Middleware;
 
 namespace AigoraNet.WebApi;
 
@@ -23,6 +25,7 @@ public class Startup
     private readonly DatabaseConnectionStrings _databaseConnection;
     private readonly RedisConfiguration _redisConfig;
     private readonly HostSettings _hostSettings;
+    private readonly ApplicationInsights _applicationInsights;
 
     public Startup(IWebHostEnvironment env, IConfiguration configuration)
     {
@@ -31,6 +34,7 @@ public class Startup
         this._databaseConnection = configuration.GetSection(DatabaseConnectionStrings.Name).Get<DatabaseConnectionStrings>() ?? new DatabaseConnectionStrings();
         this._hostSettings = configuration.GetSection(nameof(HostSettings)).Get<HostSettings>() ?? new HostSettings();
         this._redisConfig = configuration.GetSection(nameof(RedisConfiguration)).Get<RedisConfiguration>() ?? new RedisConfiguration();
+        this._applicationInsights = configuration.GetSection(nameof(ApplicationInsights)).Get<ApplicationInsights>() ?? new ApplicationInsights();
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -52,6 +56,14 @@ public class Startup
                       options.JsonSerializerOptions.UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Skip;
                   });
         services.AddHttpContextAccessor();
+
+        // Application Insights (optional)
+        if (_applicationInsights != null && !string.IsNullOrWhiteSpace(_applicationInsights.ConnectionString))
+        {
+            services.AddApplicationInsightsTelemetry(options => { options.ConnectionString = _applicationInsights.ConnectionString; });
+            services.AddSingleton<ITelemetryService, AppInsightsTelemetryService>();
+        }
+
         services.AddMemoryCache();
         services.AddSingleton<IPromptCache, InMemoryPromptCache>();
         services.AddScoped<TokenValidationMiddleware>();
@@ -71,6 +83,7 @@ public class Startup
         services.AddLocatorProvider();
         services.AddControllers();
         services.AddOpenApi();
+        services.AddActionBridge(typeof(Program).Assembly);
     }
 
     public void Configure(WebApplication app, IWebHostEnvironment env)

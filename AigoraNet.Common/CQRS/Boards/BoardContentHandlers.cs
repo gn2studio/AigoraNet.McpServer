@@ -1,107 +1,293 @@
 using AigoraNet.Common.Entities;
+using GN2.Common.Library.Abstracts;
+using GN2.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Web;
 
 namespace AigoraNet.Common.CQRS.Boards;
 
-public record CreateBoardContentCommand(string MasterId, string CategoryId, string Title, string Content, string? Answer, string? OwnerId, string CreatedBy);
-public record UpdateBoardContentCommand(string Id, string Title, string Content, string? Answer, string UpdatedBy, string? AnswerOwnerId = null, DateTime? AnswerDate = null);
-public record DeleteBoardContentCommand(string Id, string DeletedBy);
-public record GetBoardContentQuery(string Id);
-public record ListBoardContentsQuery(string MasterId, string? CategoryId = null);
+public record CreateBoardContentCommand(string MasterId, string CategoryId, string Title, string Content, string? Answer, string? OwnerId, string CreatedBy) : IBridgeRequest<ReturnValues<BoardContent>>;
+public record UpdateBoardContentCommand(string Id, string Title, string Content, string? Answer, string UpdatedBy, string? AnswerOwnerId = null, DateTime? AnswerDate = null) : IBridgeRequest<ReturnValues<BoardContent>>;
+public record DeleteBoardContentCommand(string Id, string DeletedBy) : IBridgeRequest<ReturnValues<BoardContent>>;
+public record GetBoardContentQuery(string Id) : IBridgeRequest<ReturnValues<BoardContent>>;
+public record ListBoardContentsQuery(string MasterId, string? CategoryId = null) : IBridgeRequest<ReturnValues<List<BoardContent>>>;
 
 public record BoardContentResult(bool Success, string? Error = null, BoardContent? Content = null);
 public record BoardContentListResult(bool Success, string? Error = null, IReadOnlyList<BoardContent>? Items = null);
+
+public class CreateBoardContentCommandHandler : IBridgeHandler<CreateBoardContentCommand, ReturnValues<BoardContent>>
+{
+    private readonly DefaultContext _context;
+    private readonly ILogger<CreateBoardContentCommand> _logger;
+
+    public CreateBoardContentCommandHandler(ILogger<CreateBoardContentCommand> logger, DefaultContext db) : base()
+    {
+        _context = db;
+        _logger = logger;
+    }
+
+    public async Task<ReturnValues<BoardContent>> HandleAsync(CreateBoardContentCommand request, CancellationToken ct)
+    {
+        var result = new ReturnValues<BoardContent>();
+
+        if (string.IsNullOrWhiteSpace(request.MasterId))
+        {
+            result.SetError("MasterId required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.CategoryId))
+        {
+            result.SetError("CategoryId required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            result.SetError("Title required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            result.SetError("Content required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.CreatedBy))
+        {
+            result.SetError("CreatedBy required");
+            return result;
+        }
+
+        var master = await _context.BoardMasters.FirstOrDefaultAsync(x => x.Id == request.MasterId && x.Condition.IsEnabled && x.Condition.Status == ConditionStatus.Active, ct);
+        if (master is null)
+        {
+            result.SetError("BoardMaster not found or inactive");
+            return result;
+        }
+        var category = await _context.BoardCategories.FirstOrDefaultAsync(x => x.Id == request.CategoryId, ct);
+        if (category is null)
+        {
+            result.SetError("Category not found");
+            return result;
+        }
+
+        var entity = new BoardContent
+        {
+            MasterId = request.MasterId,
+            CategoryId = request.CategoryId,
+            Title = request.Title.Trim(),
+            Content = HttpUtility.UrlDecode(request.Content),
+            Answer = string.IsNullOrWhiteSpace(request.Answer) ? null : HttpUtility.UrlDecode(request.Answer!),
+            OwnerId = request.OwnerId,
+            Condition = new AuditableEntity { CreatedBy = request.CreatedBy, RegistDate = DateTime.UtcNow }
+        };
+
+        await _context.BoardContents.AddAsync(entity, ct);
+        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("BoardContent created {Id}", entity.Id);
+        result.SetSuccess(1, entity);
+        return result;
+    }
+}
+
+public class UpdateBoardContentCommandHandler : IBridgeHandler<UpdateBoardContentCommand, ReturnValues<BoardContent>>
+{
+    private readonly DefaultContext _context;
+    private readonly ILogger<UpdateBoardContentCommand> _logger;
+
+    public UpdateBoardContentCommandHandler(ILogger<UpdateBoardContentCommand> logger, DefaultContext db) : base()
+    {
+        _context = db;
+        _logger = logger;
+    }
+
+    public async Task<ReturnValues<BoardContent>> HandleAsync(UpdateBoardContentCommand request, CancellationToken ct)
+    {
+        var result = new ReturnValues<BoardContent>();
+
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            result.SetError("Id required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            result.SetError("Title required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            result.SetError("Content required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.UpdatedBy))
+        {
+            result.SetError("UpdatedBy required");
+            return result;
+        }
+
+        var entity = await _context.BoardContents.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+        if (entity is null)
+        {
+            result.SetError("BoardContent not found");
+            return result;
+        }
+        if (!entity.Condition.IsEnabled || entity.Condition.Status != ConditionStatus.Active)
+        {
+            result.SetError("BoardContent inactive");
+            return result;
+        }
+
+        entity.Title = request.Title.Trim();
+        entity.Content = HttpUtility.UrlDecode(request.Content);
+        entity.Answer = string.IsNullOrWhiteSpace(request.Answer) ? entity.Answer : HttpUtility.UrlDecode(request.Answer!);
+        entity.AnswerDate = request.AnswerDate ?? entity.AnswerDate;
+        entity.AnwerOwnerId = request.AnswerOwnerId ?? entity.AnwerOwnerId;
+        entity.Condition.UpdatedBy = request.UpdatedBy;
+        entity.Condition.LastUpdate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("BoardContent updated {Id}", entity.Id);
+        result.SetSuccess(1, entity);
+        return result;
+    }
+}
+
+public class DeleteBoardContentCommandHandler : IBridgeHandler<DeleteBoardContentCommand, ReturnValues<BoardContent>>
+{
+    private readonly DefaultContext _context;
+    private readonly ILogger<DeleteBoardContentCommand> _logger;
+
+    public DeleteBoardContentCommandHandler(ILogger<DeleteBoardContentCommand> logger, DefaultContext db) : base()
+    {
+        _context = db;
+        _logger = logger;
+    }
+
+    public async Task<ReturnValues<BoardContent>> HandleAsync(DeleteBoardContentCommand request, CancellationToken ct)
+    {
+        var result = new ReturnValues<BoardContent>();
+
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            result.SetError("Id required");
+            return result;
+        }
+        if (string.IsNullOrWhiteSpace(request.DeletedBy))
+        {
+            result.SetError("DeletedBy required");
+            return result;
+        }
+
+        var entity = await _context.BoardContents.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+        if (entity is null)
+        {
+            result.SetError("BoardContent not found");
+            return result;
+        }
+
+        entity.Condition.IsEnabled = false;
+        entity.Condition.Status = ConditionStatus.Disabled;
+        entity.Condition.DeletedBy = request.DeletedBy;
+        entity.Condition.DeletedDate = DateTime.UtcNow;
+        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("BoardContent disabled {Id}", entity.Id);
+        result.SetSuccess(1, entity);
+        return result;
+    }
+}
+
+public class GetBoardContentQueryHandler : IBridgeHandler<GetBoardContentQuery, ReturnValues<BoardContent>>
+{
+    private readonly DefaultContext _context;
+
+    public GetBoardContentQueryHandler(DefaultContext db) : base()
+    {
+        _context = db;
+    }
+
+    public async Task<ReturnValues<BoardContent>> HandleAsync(GetBoardContentQuery request, CancellationToken ct)
+    {
+        var result = new ReturnValues<BoardContent>();
+
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            result.SetError("Id required");
+            return result;
+        }
+
+        var entity = await _context.BoardContents.AsNoTracking()
+            .Include(x => x.Category)
+            .Include(x => x.Master)
+            .FirstOrDefaultAsync(x => x.Id == request.Id && x.Condition.IsEnabled && x.Condition.Status == ConditionStatus.Active, ct);
+
+        if (entity is null)
+        {
+            result.SetError("BoardContent not found");
+            return result;
+        }
+
+        result.SetSuccess(1, entity);
+        return result;
+    }
+}
+
+public class ListBoardContentsQueryHandler : IBridgeHandler<ListBoardContentsQuery, ReturnValues<List<BoardContent>>>
+{
+    private readonly DefaultContext _context;
+
+    public ListBoardContentsQueryHandler(DefaultContext db) : base()
+    {
+        _context = db;
+    }
+
+    public async Task<ReturnValues<List<BoardContent>>> HandleAsync(ListBoardContentsQuery request, CancellationToken ct)
+    {
+        var result = new ReturnValues<List<BoardContent>>();
+
+        if (string.IsNullOrWhiteSpace(request.MasterId))
+        {
+            result.SetError("MasterId required");
+            return result;
+        }
+
+        var q = _context.BoardContents.AsNoTracking().Where(x => x.MasterId == request.MasterId && x.Condition.IsEnabled && x.Condition.Status == ConditionStatus.Active);
+        if (!string.IsNullOrWhiteSpace(request.CategoryId)) q = q.Where(x => x.CategoryId == request.CategoryId);
+        var list = await q.OrderByDescending(x => x.Condition.RegistDate).ToListAsync(ct);
+
+        result.SetSuccess(list.Count, list);
+        return result;
+    }
+}
 
 public static class BoardContentHandlers
 {
     public static async Task<BoardContentResult> Handle(CreateBoardContentCommand command, DefaultContext db, ILogger<CreateBoardContentCommand> logger, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(command.MasterId)) return new BoardContentResult(false, "MasterId required");
-        if (string.IsNullOrWhiteSpace(command.CategoryId)) return new BoardContentResult(false, "CategoryId required");
-        if (string.IsNullOrWhiteSpace(command.Title)) return new BoardContentResult(false, "Title required");
-        if (string.IsNullOrWhiteSpace(command.Content)) return new BoardContentResult(false, "Content required");
-        if (string.IsNullOrWhiteSpace(command.CreatedBy)) return new BoardContentResult(false, "CreatedBy required");
-
-        var master = await db.BoardMasters.FirstOrDefaultAsync(x => x.Id == command.MasterId && x.Condition.IsEnabled && x.Condition.Status == ConditionStatus.Active, ct);
-        if (master is null) return new BoardContentResult(false, "BoardMaster not found or inactive");
-        var category = await db.BoardCategories.FirstOrDefaultAsync(x => x.Id == command.CategoryId, ct);
-        if (category is null) return new BoardContentResult(false, "Category not found");
-
-        var entity = new BoardContent
-        {
-            MasterId = command.MasterId,
-            CategoryId = command.CategoryId,
-            Title = command.Title.Trim(),
-            Content = HttpUtility.UrlDecode(command.Content),
-            Answer = string.IsNullOrWhiteSpace(command.Answer) ? null : HttpUtility.UrlDecode(command.Answer!),
-            OwnerId = command.OwnerId,
-            Condition = new AuditableEntity { CreatedBy = command.CreatedBy, RegistDate = DateTime.UtcNow }
-        };
-
-        await db.BoardContents.AddAsync(entity, ct);
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("BoardContent created {Id}", entity.Id);
-        return new BoardContentResult(true, null, entity);
+        var bridge = await new CreateBoardContentCommandHandler(logger, db).HandleAsync(command, ct);
+        return new BoardContentResult(bridge.Success, bridge.Message, bridge.Data);
     }
 
     public static async Task<BoardContentResult> Handle(UpdateBoardContentCommand command, DefaultContext db, ILogger<UpdateBoardContentCommand> logger, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(command.Id)) return new BoardContentResult(false, "Id required");
-        if (string.IsNullOrWhiteSpace(command.Title)) return new BoardContentResult(false, "Title required");
-        if (string.IsNullOrWhiteSpace(command.Content)) return new BoardContentResult(false, "Content required");
-        if (string.IsNullOrWhiteSpace(command.UpdatedBy)) return new BoardContentResult(false, "UpdatedBy required");
-
-        var entity = await db.BoardContents.FirstOrDefaultAsync(x => x.Id == command.Id, ct);
-        if (entity is null) return new BoardContentResult(false, "BoardContent not found");
-        if (!entity.Condition.IsEnabled || entity.Condition.Status != ConditionStatus.Active) return new BoardContentResult(false, "BoardContent inactive");
-
-        entity.Title = command.Title.Trim();
-        entity.Content = HttpUtility.UrlDecode(command.Content);
-        entity.Answer = string.IsNullOrWhiteSpace(command.Answer) ? entity.Answer : HttpUtility.UrlDecode(command.Answer!);
-        entity.AnswerDate = command.AnswerDate ?? entity.AnswerDate;
-        entity.AnwerOwnerId = command.AnswerOwnerId ?? entity.AnwerOwnerId;
-        entity.Condition.UpdatedBy = command.UpdatedBy;
-        entity.Condition.LastUpdate = DateTime.UtcNow;
-
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("BoardContent updated {Id}", entity.Id);
-        return new BoardContentResult(true, null, entity);
+        var bridge = await new UpdateBoardContentCommandHandler(logger, db).HandleAsync(command, ct);
+        return new BoardContentResult(bridge.Success, bridge.Message, bridge.Data);
     }
 
     public static async Task<BoardContentResult> Handle(DeleteBoardContentCommand command, DefaultContext db, ILogger<DeleteBoardContentCommand> logger, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(command.Id)) return new BoardContentResult(false, "Id required");
-        if (string.IsNullOrWhiteSpace(command.DeletedBy)) return new BoardContentResult(false, "DeletedBy required");
-        var entity = await db.BoardContents.FirstOrDefaultAsync(x => x.Id == command.Id, ct);
-        if (entity is null) return new BoardContentResult(false, "BoardContent not found");
-
-        entity.Condition.IsEnabled = false;
-        entity.Condition.Status = ConditionStatus.Disabled;
-        entity.Condition.DeletedBy = command.DeletedBy;
-        entity.Condition.DeletedDate = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("BoardContent disabled {Id}", entity.Id);
-        return new BoardContentResult(true, null, entity);
+        var bridge = await new DeleteBoardContentCommandHandler(logger, db).HandleAsync(command, ct);
+        return new BoardContentResult(bridge.Success, bridge.Message, bridge.Data);
     }
 
     public static async Task<BoardContentResult> Handle(GetBoardContentQuery query, DefaultContext db, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(query.Id)) return new BoardContentResult(false, "Id required");
-        var entity = await db.BoardContents.AsNoTracking()
-            .Include(x => x.Category)
-            .Include(x => x.Master)
-            .FirstOrDefaultAsync(x => x.Id == query.Id && x.Condition.IsEnabled && x.Condition.Status == ConditionStatus.Active, ct);
-        return entity is null ? new BoardContentResult(false, "BoardContent not found") : new BoardContentResult(true, null, entity);
+        var bridge = await new GetBoardContentQueryHandler(db).HandleAsync(query, ct);
+        return new BoardContentResult(bridge.Success, bridge.Message, bridge.Data);
     }
 
     public static async Task<BoardContentListResult> Handle(ListBoardContentsQuery query, DefaultContext db, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(query.MasterId)) return new BoardContentListResult(false, "MasterId required");
-        var q = db.BoardContents.AsNoTracking().Where(x => x.MasterId == query.MasterId && x.Condition.IsEnabled && x.Condition.Status == ConditionStatus.Active);
-        if (!string.IsNullOrWhiteSpace(query.CategoryId)) q = q.Where(x => x.CategoryId == query.CategoryId);
-        var list = await q.OrderByDescending(x => x.Condition.RegistDate).ToListAsync(ct);
-        return new BoardContentListResult(true, null, list);
+        var bridge = await new ListBoardContentsQueryHandler(db).HandleAsync(query, ct);
+        return new BoardContentListResult(bridge.Success, bridge.Message, bridge.Data);
     }
 }

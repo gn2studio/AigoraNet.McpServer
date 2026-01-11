@@ -1,4 +1,5 @@
 ﻿using AigoraNet.Common.Configurations;
+using GN2.Core.Configurations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;

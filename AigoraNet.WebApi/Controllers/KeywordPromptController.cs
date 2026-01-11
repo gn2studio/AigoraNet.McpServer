@@ -1,5 +1,5 @@
-using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Prompts;
+using GN2.Common.Library.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,24 +10,32 @@ namespace AigoraNet.WebApi.Controllers;
 [Authorize(Roles = "Admin")]
 public class KeywordPromptController : DefaultController
 {
-    [HttpPost]
-    public async Task<IActionResult> Upsert([FromBody] UpsertKeywordPromptCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<UpsertKeywordPromptCommand> logger, CancellationToken ct)
+    private readonly ILogger<KeywordPromptController> _logger;
+
+    public KeywordPromptController(ILogger<KeywordPromptController> logger, IActionBridge bridge, IObjectLinker linker) : base(bridge, linker)
     {
-        var result = await KeywordPromptHandlers.Handle(command, db, logger, ct);
-        return result.Success ? Ok(result.KeywordPrompt) : BadRequest(result.Error);
+        _logger = logger;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Upsert([FromBody] UpsertKeywordPromptCommand command, CancellationToken ct)
+    {
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] ILogger<DeleteKeywordPromptCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, CancellationToken ct)
     {
-        var result = await KeywordPromptHandlers.Handle(new DeleteKeywordPromptCommand(id, deletedBy), db, logger, ct);
-        return result.Success ? Ok(result.KeywordPrompt) : NotFound(result.Error);
+        var command = new DeleteKeywordPromptCommand(id, deletedBy);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string? locale, [FromQuery] string? promptTemplateId, [FromServices] DefaultContext db, CancellationToken ct)
+    public async Task<IActionResult> List([FromQuery] string? locale, [FromQuery] string? promptTemplateId, CancellationToken ct)
     {
-        var result = await KeywordPromptHandlers.Handle(new ListKeywordPromptsQuery(locale, promptTemplateId), db, ct);
-        return Ok(result.Items);
+        var result = await _bridge.SendAsync(new ListKeywordPromptsQuery(locale, promptTemplateId), ct);
+        return ApiResult(result);
     }
 }

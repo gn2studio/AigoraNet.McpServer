@@ -1,42 +1,71 @@
 using AigoraNet.Common.Entities;
+using GN2.Common.Library.Abstracts;
+using GN2.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace AigoraNet.Common.CQRS.Auth;
 
-public record ValidateTokenQuery(string TokenKey);
+public record ValidateTokenQuery(string TokenKey) : IBridgeRequest<ReturnValues<ValidateTokenResult>>;
 
 public record ValidateTokenResult(bool Success, string? MemberId = null, TokenStatus Status = TokenStatus.Expired, DateTime? ExpiresAt = null, string? Error = null);
 
-public static class ValidateTokenHandler
+public class ValidateTokenQueryHandler : IBridgeHandler<ValidateTokenQuery, ReturnValues<ValidateTokenResult>>
 {
-    public static async Task<ValidateTokenResult> Handle(ValidateTokenQuery query, DefaultContext db, ILogger<ValidateTokenQuery> logger, CancellationToken ct)
+    private readonly DefaultContext _context;
+    private readonly ILogger<ValidateTokenQuery> _logger;
+
+    public ValidateTokenQueryHandler(ILogger<ValidateTokenQuery> logger, DefaultContext db) : base()
     {
-        var token = await db.Tokens.FirstOrDefaultAsync(x => x.TokenKey == query.TokenKey, ct);
+        _context = db;
+        _logger = logger;
+    }
+
+    public async Task<ReturnValues<ValidateTokenResult>> HandleAsync(ValidateTokenQuery request, CancellationToken ct)
+    {
+        var result = new ReturnValues<ValidateTokenResult>();
+
+        var token = await _context.Tokens.FirstOrDefaultAsync(x => x.TokenKey == request.TokenKey, ct);
         if (token is null)
         {
-            logger.LogWarning("Token not found {TokenKey}", query.TokenKey);
-            return new ValidateTokenResult(false, null, TokenStatus.Expired, null, "Token not found");
+            _logger.LogWarning("Token not found {TokenKey}", request.TokenKey);
+            result.SetError("Token not found");
+            result.Data = new ValidateTokenResult(false, null, TokenStatus.Expired, null, "Token not found");
+            return result;
         }
 
         if (token.Status == TokenStatus.Revoked)
         {
-            logger.LogWarning("Token revoked {TokenKey} for member {MemberId}", token.TokenKey, token.MemberId);
-            return new ValidateTokenResult(false, token.MemberId, token.Status, token.ExpiresAt, "Token revoked");
+            _logger.LogWarning("Token revoked {TokenKey} for member {MemberId}", token.TokenKey, token.MemberId);
+            result.SetError("Token revoked");
+            result.Data = new ValidateTokenResult(false, token.MemberId, token.Status, token.ExpiresAt, "Token revoked");
+            return result;
         }
 
         if (token.ExpiresAt.HasValue && token.ExpiresAt.Value < DateTime.UtcNow)
         {
             token.Status = TokenStatus.Expired;
-            await db.SaveChangesAsync(ct);
-            logger.LogWarning("Token expired {TokenKey} for member {MemberId}", token.TokenKey, token.MemberId);
-            return new ValidateTokenResult(false, token.MemberId, token.Status, token.ExpiresAt, "Token expired");
+            await _context.SaveChangesAsync(ct);
+            _logger.LogWarning("Token expired {TokenKey} for member {MemberId}", token.TokenKey, token.MemberId);
+            result.SetError("Token expired");
+            result.Data = new ValidateTokenResult(false, token.MemberId, token.Status, token.ExpiresAt, "Token expired");
+            return result;
         }
 
         token.LastUsedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct);
 
-        logger.LogInformation("Validated token {TokenKey} for member {MemberId}", token.TokenKey, token.MemberId);
-        return new ValidateTokenResult(true, token.MemberId, token.Status, token.ExpiresAt);
+        _logger.LogInformation("Validated token {TokenKey} for member {MemberId}", token.TokenKey, token.MemberId);
+        result.SetSuccess(1, new ValidateTokenResult(true, token.MemberId, token.Status, token.ExpiresAt));
+        return result;
+    }
+}
+
+public static class ValidateTokenHandler
+{
+    public static async Task<ValidateTokenResult> Handle(ValidateTokenQuery query, DefaultContext db, ILogger<ValidateTokenQuery> logger, CancellationToken ct)
+    {
+        var bridge = await new ValidateTokenQueryHandler(logger, db).HandleAsync(query, ct);
+        return bridge.Data ?? new ValidateTokenResult(bridge.Success, null, TokenStatus.Expired, null, bridge.Message);
     }
 }

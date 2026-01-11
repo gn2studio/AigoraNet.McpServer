@@ -1,5 +1,5 @@
-﻿using AigoraNet.Common.Configurations;
-using AigoraNet.Common.DTO;
+﻿using AigoraNet.Common.DTO;
+using GN2.Core.Configurations;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -9,7 +9,7 @@ namespace AigoraNet.Common.Helpers;
 
 public class AuthticationHelper
 {
-    public static string GenerateJwtToken(MemberDTO user, CurrentSiteConfiguration externalApiConfiguration, int AppendHour)
+    public static string GenerateJwtToken(MemberDTO user, ExternalApiConfiguration externalApiConfiguration, int AppendHour)
     {
         if (user == null)
         {
@@ -37,7 +37,7 @@ public class AuthticationHelper
         return tokenHandler.WriteToken(token);
     }
 
-    public static string NoExpiredTokenGenerate(MemberDTO userinfo, CurrentSiteConfiguration externalApiConfiguration)
+    public static string NoExpiredTokenGenerate(MemberDTO userinfo, ExternalApiConfiguration externalApiConfiguration)
     {
         if (userinfo == null)
         {

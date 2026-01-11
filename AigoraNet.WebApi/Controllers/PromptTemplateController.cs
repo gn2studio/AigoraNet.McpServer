@@ -1,5 +1,5 @@
-using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Prompts;
+using GN2.Common.Library.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,38 +10,46 @@ namespace AigoraNet.WebApi.Controllers;
 [Authorize(Roles = "Admin")]
 public class PromptTemplateController : DefaultController
 {
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreatePromptTemplateCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<CreatePromptTemplateCommand> logger, CancellationToken ct)
+    private readonly ILogger<PromptTemplateController> _logger;
+
+    public PromptTemplateController(ILogger<PromptTemplateController> logger, IActionBridge bridge, IObjectLinker linker) : base(bridge, linker)
     {
-        var result = await PromptTemplateHandlers.Handle(command, db, logger, ct);
-        return result.Success ? Ok(result.Template) : BadRequest(result.Error);
+        _logger = logger;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreatePromptTemplateCommand command, CancellationToken ct)
+    {
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdatePromptTemplateCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<UpdatePromptTemplateCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Update([FromBody] UpdatePromptTemplateCommand command, CancellationToken ct)
     {
-        var result = await PromptTemplateHandlers.Handle(command, db, logger, ct);
-        return result.Success ? Ok(result.Template) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] ILogger<DeletePromptTemplateCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, CancellationToken ct)
     {
-        var result = await PromptTemplateHandlers.Handle(new DeletePromptTemplateCommand(id, deletedBy), db, logger, ct);
-        return result.Success ? Ok(result.Template) : NotFound(result.Error);
+        var command = new DeletePromptTemplateCommand(id, deletedBy);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> Get(string id, [FromServices] DefaultContext db, CancellationToken ct)
+    public async Task<IActionResult> Get(string id, CancellationToken ct)
     {
-        var result = await PromptTemplateHandlers.Handle(new GetPromptTemplateQuery(id), db, ct);
-        return result.Success ? Ok(result.Template) : NotFound(result.Error);
+        var result = await _bridge.SendAsync(new GetPromptTemplateQuery(id), ct);
+        return ApiResult(result);
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string? locale, [FromQuery] string? name, [FromServices] DefaultContext db, CancellationToken ct)
+    public async Task<IActionResult> List([FromQuery] string? locale, [FromQuery] string? name, CancellationToken ct)
     {
-        var result = await PromptTemplateHandlers.Handle(new ListPromptTemplatesQuery(locale, name), db, ct);
-        return Ok(result.Templates);
+        var result = await _bridge.SendAsync(new ListPromptTemplatesQuery(locale, name), ct);
+        return ApiResult(result);
     }
 }

@@ -1,6 +1,5 @@
-using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Files;
-using AigoraNet.Common.Abstracts;
+using GN2.Common.Library.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +18,13 @@ namespace AigoraNet.WebApi.Controllers;
 [Authorize(Roles = "Admin,User")]
 public class FileController : DefaultController
 {
+    private readonly ILogger<FileController> _logger;
+
+    public FileController(ILogger<FileController> logger, IActionBridge bridge, IObjectLinker linker) : base(bridge, linker)
+    {
+        _logger = logger;
+    }
+
     /// <summary>
     /// 새 파일을 업로드하고 메타데이터를 등록합니다.
     /// </summary>
@@ -34,16 +40,13 @@ public class FileController : DefaultController
     /// 응답: 저장된 파일 메타데이터.
     /// </remarks>
     /// <param name="command">파일 이름, 크기, MIME 타입, Base64/바이트 내용.</param>
-    /// <param name="db">DB 컨텍스트.</param>
-    /// <param name="blob">Azure Blob 파일 서비스.</param>
-    /// <param name="logger">구조적 로깅용 로거.</param>
     /// <param name="ct">요청 취소 토큰.</param>
     /// <returns>등록된 파일 메타데이터.</returns>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateFileMasterCommand command, [FromServices] DefaultContext db, [FromServices] IAzureBlobFileService blob, [FromServices] ILogger<CreateFileMasterCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] CreateFileMasterCommand command, CancellationToken ct)
     {
-        var result = await FileMasterHandlers.Handle(command, db, blob, logger, ct);
-        return result.Success ? Ok(result.File) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     /// <summary>
@@ -54,16 +57,13 @@ public class FileController : DefaultController
     /// - 이전 파일은 Condition.IsEnabled=false로 표시되고 Blob에서 제거됩니다.
     /// </remarks>
     /// <param name="command">교체 대상 파일 ID와 새 파일 정보.</param>
-    /// <param name="db">DB 컨텍스트.</param>
-    /// <param name="blob">Azure Blob 파일 서비스.</param>
-    /// <param name="logger">구조적 로깅용 로거.</param>
     /// <param name="ct">요청 취소 토큰.</param>
     /// <returns>교체된 새 파일 메타데이터.</returns>
     [HttpPut("replace")] // replaces existing file: uploads new, disables old, deletes old blob
-    public async Task<IActionResult> Replace([FromBody] ReplaceFileMasterCommand command, [FromServices] DefaultContext db, [FromServices] IAzureBlobFileService blob, [FromServices] ILogger<ReplaceFileMasterCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Replace([FromBody] ReplaceFileMasterCommand command, CancellationToken ct)
     {
-        var result = await FileMasterHandlers.Handle(command, db, blob, logger, ct);
-        return result.Success ? Ok(result.File) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     /// <summary>
@@ -75,16 +75,14 @@ public class FileController : DefaultController
     /// </remarks>
     /// <param name="id">삭제할 파일 ID.</param>
     /// <param name="deletedBy">삭제 요청자.</param>
-    /// <param name="db">DB 컨텍스트.</param>
-    /// <param name="blob">Azure Blob 파일 서비스.</param>
-    /// <param name="logger">구조적 로깅용 로거.</param>
     /// <param name="ct">요청 취소 토큰.</param>
     /// <returns>삭제된 파일 정보 또는 404.</returns>
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] IAzureBlobFileService blob, [FromServices] ILogger<DeleteFileMasterCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, CancellationToken ct)
     {
-        var result = await FileMasterHandlers.Handle(new DeleteFileMasterCommand(id, deletedBy), db, blob, logger, ct);
-        return result.Success ? Ok(result.File) : NotFound(result.Error);
+        var command = new DeleteFileMasterCommand(id, deletedBy);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     /// <summary>
@@ -94,13 +92,12 @@ public class FileController : DefaultController
     /// - 실제 파일 다운로드 URL은 별도 Blob 경로나 SAS 토큰 정책을 따릅니다.
     /// </remarks>
     /// <param name="id">파일 ID.</param>
-    /// <param name="db">DB 컨텍스트.</param>
     /// <param name="ct">요청 취소 토큰.</param>
     /// <returns>파일 메타데이터 또는 404.</returns>
     [HttpGet("{id}")]
-    public async Task<IActionResult> Get(string id, [FromServices] DefaultContext db, CancellationToken ct)
+    public async Task<IActionResult> Get(string id, CancellationToken ct)
     {
-        var result = await FileMasterHandlers.Handle(new GetFileMasterQuery(id), db, ct);
-        return result.Success ? Ok(result.File) : NotFound(result.Error);
+        var result = await _bridge.SendAsync(new GetFileMasterQuery(id), ct);
+        return ApiResult(result);
     }
 }

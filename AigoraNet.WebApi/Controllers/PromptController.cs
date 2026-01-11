@@ -1,6 +1,5 @@
-using AigoraNet.Common;
-using AigoraNet.Common.CQRS;
 using AigoraNet.Common.CQRS.Prompts;
+using GN2.Common.Library.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,27 +10,23 @@ namespace AigoraNet.WebApi.Controllers;
 [AllowAnonymous]
 public class PromptController : DefaultController
 {
+    private readonly ILogger<PromptController> _logger;
+
+    public PromptController(ILogger<PromptController> logger, IActionBridge bridge, IObjectLinker linker) : base(bridge, linker)
+    {
+        _logger = logger;
+    }
+
     [HttpPost("match")]
-    public async Task<IActionResult> Match([FromBody] GetPromptRequest request, [FromServices] DefaultContext db, [FromServices] IPromptCache cache, [FromServices] ILogger<GetPromptByKeywordQuery> logger, CancellationToken ct)
+    public async Task<IActionResult> Match([FromBody] GetPromptRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Requirement))
         {
             return BadRequest("Requirement is required");
         }
 
-        var result = await GetPromptByKeywordHandler.Handle(
-            new GetPromptByKeywordQuery(request.Requirement, request.Locale, request.AllowRegex),
-            db,
-            cache,
-            logger,
-            ct);
-
-        if (!result.Success)
-        {
-            return NotFound(result);
-        }
-
-        return Ok(result);
+        var result = await _bridge.SendAsync(new GetPromptByKeywordQuery(request.Requirement, request.Locale, request.AllowRegex), ct);
+        return ApiResult(result);
     }
 }
 

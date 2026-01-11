@@ -1,6 +1,5 @@
 using AigoraNet.Common;
 using AigoraNet.Common.Abstracts;
-using AigoraNet.Common.Configurations;
 using AigoraNet.Common.CQRS;
 using AigoraNet.Common.CQRS.Auth;
 using AigoraNet.Common.CQRS.Prompts;
@@ -9,6 +8,7 @@ using AigoraNet.Common.DTO;
 using AigoraNet.Common.Services;
 using AigoraNet.McpServer.Services;
 using AigoraNet.McpServer.Tools;
+using GN2.Core.Configurations;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +16,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
 
 var basePath = AppContext.BaseDirectory;
 var builder = WebApplication.CreateBuilder(args);

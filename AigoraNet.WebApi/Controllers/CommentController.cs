@@ -1,5 +1,5 @@
-using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Comments;
+using GN2.Common.Library.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,31 +10,38 @@ namespace AigoraNet.WebApi.Controllers;
 [Authorize(Roles = "Admin,User")]
 public class CommentController : DefaultController
 {
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateCommentCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<CreateCommentCommand> logger, CancellationToken ct)
+    private readonly ILogger<CommentController> _logger;
+
+    public CommentController(ILogger<CommentController> logger, IActionBridge bridge, IObjectLinker linker) : base(bridge, linker)
     {
-        var result = await CommentHandlers.Handle(command, db, logger, ct);
-        return result.Success ? Ok(result.Comment) : BadRequest(result.Error);
+        _logger = logger;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateCommentCommand command, CancellationToken ct)
+    {
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdateCommentCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<UpdateCommentCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Update([FromBody] UpdateCommentCommand command, CancellationToken ct)
     {
-        var result = await CommentHandlers.Handle(command, db, logger, ct);
-        return result.Success ? Ok(result.Comment) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, [FromServices] DefaultContext db, [FromServices] ILogger<DeleteCommentCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Delete(string id, [FromQuery] string deletedBy, CancellationToken ct)
     {
-        var result = await CommentHandlers.Handle(new DeleteCommentCommand(id, deletedBy), db, logger, ct);
-        return result.Success ? Ok(result.Comment) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(new DeleteCommentCommand(id, deletedBy), ct);
+        return ApiResult(result);
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string key, [FromServices] DefaultContext db, CancellationToken ct)
+    public async Task<IActionResult> List([FromQuery] string key, CancellationToken ct)
     {
-        var result = await CommentHandlers.Handle(new ListCommentsQuery(key), db, ct);
-        return result.Success ? Ok(result.Comments) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(new ListCommentsQuery(key), ct);
+        return ApiResult(result);
     }
 }

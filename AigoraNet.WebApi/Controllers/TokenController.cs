@@ -1,5 +1,5 @@
-using AigoraNet.Common;
 using AigoraNet.Common.CQRS.Tokens;
+using GN2.Common.Library.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,6 +17,13 @@ namespace AigoraNet.WebApi.Controllers;
 [Authorize]
 public class TokenController : DefaultController
 {
+    private readonly ILogger<TokenController> _logger;
+
+    public TokenController(ILogger<TokenController> logger, IActionBridge bridge, IObjectLinker linker) : base(bridge, linker)
+    {
+        _logger = logger;
+    }
+
     /// <summary>
     /// 토큰을 폐기(Revoked) 상태로 변경합니다. 폐기된 토큰은 더 이상 사용되지 않습니다.
     /// </summary>
@@ -29,15 +36,13 @@ public class TokenController : DefaultController
     /// 성공 시 폐기된 토큰 엔티티 반환, 실패 시 400.
     /// </remarks>
     /// <param name="command">폐기할 토큰 키와 요청자 정보.</param>
-    /// <param name="db">DB 컨텍스트.</param>
-    /// <param name="logger">구조적 로깅용 로거.</param>
     /// <param name="ct">요청 취소 토큰.</param>
     /// <returns>폐기된 토큰 정보.</returns>
     [HttpPost("revoke")]
-    public async Task<IActionResult> Revoke([FromBody] RevokeTokenCommand command, [FromServices] DefaultContext db, [FromServices] ILogger<RevokeTokenCommand> logger, CancellationToken ct)
+    public async Task<IActionResult> Revoke([FromBody] RevokeTokenCommand command, CancellationToken ct)
     {
-        var result = await TokenHandlers.Handle(command, db, logger, ct);
-        return result.Success ? Ok(result.Token) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(command, ct);
+        return ApiResult(result);
     }
 
     /// <summary>
@@ -47,14 +52,13 @@ public class TokenController : DefaultController
     /// - 토큰이 없거나 만료/폐기 상태면 404 또는 오류 메시지를 반환합니다.
     /// </remarks>
     /// <param name="tokenKey">조회할 토큰 키.</param>
-    /// <param name="db">DB 컨텍스트.</param>
     /// <param name="ct">요청 취소 토큰.</param>
     /// <returns>토큰 정보 또는 404.</returns>
     [HttpGet("{tokenKey}")]
-    public async Task<IActionResult> Get(string tokenKey, [FromServices] DefaultContext db, CancellationToken ct)
+    public async Task<IActionResult> Get(string tokenKey, CancellationToken ct)
     {
-        var result = await TokenHandlers.Handle(new GetTokenQuery(tokenKey), db, ct);
-        return result.Success ? Ok(result.Token) : NotFound(result.Error);
+        var result = await _bridge.SendAsync(new GetTokenQuery(tokenKey), ct);
+        return ApiResult(result);
     }
 
     /// <summary>
@@ -65,13 +69,12 @@ public class TokenController : DefaultController
     /// </remarks>
     /// <param name="memberId">회원 ID.</param>
     /// <param name="includeExpired">만료/폐기된 토큰 포함 여부.</param>
-    /// <param name="db">DB 컨텍스트.</param>
     /// <param name="ct">요청 취소 토큰.</param>
     /// <returns>토큰 목록.</returns>
     [HttpGet("member/{memberId}")]
-    public async Task<IActionResult> ListByMember(string memberId, [FromQuery] bool includeExpired, [FromServices] DefaultContext db, CancellationToken ct)
+    public async Task<IActionResult> ListByMember(string memberId, [FromQuery] bool includeExpired, CancellationToken ct)
     {
-        var result = await TokenHandlers.Handle(new ListTokensByMemberQuery(memberId, includeExpired), db, ct);
-        return result.Success ? Ok(result.Tokens) : BadRequest(result.Error);
+        var result = await _bridge.SendAsync(new ListTokensByMemberQuery(memberId, includeExpired), ct);
+        return ApiResult(result);
     }
 }

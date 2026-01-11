@@ -1,4 +1,4 @@
-﻿using AigoraNet.Common.Models;
+﻿using GN2.Core;
 using System.Text;
 using System.Web;
 

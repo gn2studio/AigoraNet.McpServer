@@ -1,7 +1,7 @@
 using AigoraNet.Common.Abstracts;
-using AigoraNet.Common.Configurations;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using GN2.Core.Configurations;
 using Microsoft.Extensions.Options;
 
 namespace AigoraNet.Common.Services;

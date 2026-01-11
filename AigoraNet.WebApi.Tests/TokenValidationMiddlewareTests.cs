@@ -2,6 +2,7 @@ using AigoraNet.Common;
 using AigoraNet.Common.Entities;
 using AigoraNet.WebApi.Middleware;
 using FluentAssertions;
+using GN2.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;

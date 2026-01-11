@@ -1,6 +1,6 @@
 ﻿using Serilog;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace AigoraNet.Common.Helpers;
 
@@ -32,7 +32,7 @@ public class LogHelper
 
     public void Debug<T>(T target)
     {
-        logger.Debug(JsonConvert.SerializeObject(target));
+        logger.Debug(JsonSerializer.Serialize(target));
     }
 
     public void Error(string msg)
@@ -62,6 +62,6 @@ public class LogHelper
 
     public void Info<T>(T target)
     {
-        logger.Information(JsonConvert.SerializeObject(target));
+        logger.Information(JsonSerializer.Serialize(target));
     }
 }
