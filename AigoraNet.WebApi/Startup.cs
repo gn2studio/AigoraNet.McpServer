@@ -3,6 +3,7 @@ using AigoraNet.Common.Abstracts;
 using AigoraNet.Common.Configurations;
 using AigoraNet.Common.CQRS;
 using AigoraNet.Common.Services;
+using AigoraNet.WebApi.Authorization;
 using AigoraNet.WebApi.Middleware;
 using AigoraNet.WebApi.Services;
 using GN2.Common.Library.Abstracts;
@@ -12,7 +13,10 @@ using GN2.Github.Library;
 using GN2Studio.Library.Helpers;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
 
 namespace AigoraNet.WebApi;
 
@@ -21,7 +25,8 @@ public class Startup
     private readonly IConfiguration Configuration;
     private readonly IWebHostEnvironment HostingEnvironment;
 
-    private const string ProjectName = "AigoraNet.Common";
+    internal const string ProjectName = "AigoraNet.Common";
+    internal const string TokenSecuritySchemeName = "TokenKey";
 
     private readonly DatabaseConnectionStrings _databaseConnection;
     private readonly RedisConfiguration _redisConfig;
@@ -84,7 +89,11 @@ public class Startup
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(_redisConfig.ConnectionString));
         services.AddLocatorProvider();
         services.AddControllers();
-        services.AddOpenApi();
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer(new TokenSecuritySchemeTransformer(TokenSecuritySchemeName, TokenValidationMiddleware.HttpContextTokenKey));
+            options.AddOperationTransformer(new TokenSecurityOperationTransformer(TokenSecuritySchemeName));
+        });
         services.AddActionBridge(
             typeof(Program).Assembly,
             typeof(AigoraNet.Common.AigoraSecret).Assembly
@@ -112,5 +121,103 @@ public class Startup
         });
         app.MapGet("/", () => Results.Redirect("/scalar/v1"));
         app.Services.DatabaseMigrate();
+    }
+}
+
+internal sealed class TokenSecuritySchemeTransformer : IOpenApiDocumentTransformer
+{
+    private readonly string _schemeName;
+    private readonly string _headerName;
+
+    public TokenSecuritySchemeTransformer(string schemeName, string headerName)
+    {
+        _schemeName = schemeName;
+        _headerName = headerName;
+    }
+
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
+    {
+        document.Components ??= new();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes[_schemeName] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = _headerName,
+            Description = "발급된 토큰 키를 'X-Token-Key' 헤더에 전달하세요.",
+        };
+
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class TokenSecurityOperationTransformer : IOpenApiOperationTransformer
+{
+    private readonly string _schemeName;
+
+    public TokenSecurityOperationTransformer(string schemeName)
+    {
+        _schemeName = schemeName;
+    }
+
+    public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
+    {
+        var metadata = context.Description.ActionDescriptor?.EndpointMetadata;
+        if (metadata is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (metadata.OfType<AllowAnonymousAttribute>().Any())
+        {
+            return Task.CompletedTask;
+        }
+
+        var requiresAuth = metadata.OfType<AuthorizeAttribute>().Any() || metadata.OfType<AdminOnlyAttribute>().Any();
+        if (!requiresAuth)
+        {
+            return Task.CompletedTask;
+        }
+
+        operation.Security ??= new List<OpenApiSecurityRequirement>();
+
+        var securityRequirement = new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecuritySchemeReference(_schemeName, null, null)
+                {
+                    Reference = new OpenApiReferenceWithDescription
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = _schemeName
+                    }
+                },
+                new List<string>()
+            }
+        };
+
+        operation.Security.Add(securityRequirement);
+
+        var roles = metadata
+            .OfType<AuthorizeAttribute>()
+            .SelectMany(a => (a.Roles ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (metadata.OfType<AdminOnlyAttribute>().Any() && !roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+        {
+            roles.Add("Admin");
+        }
+
+        if (roles.Count > 0)
+        {
+            var roleText = $"필요 권한: {string.Join(", ", roles)}";
+            operation.Description = string.IsNullOrWhiteSpace(operation.Description)
+                ? roleText
+                : $"{operation.Description}\n{roleText}";
+        }
+
+        return Task.CompletedTask;
     }
 }
